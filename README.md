@@ -2,7 +2,7 @@
 
 > **Speak. Retrieve. Ground.**
 
-Adaptive Voice-Enabled RAG system built for [Hacker House Goa 2026](https://hackerhouse.goa).
+Adaptive Voice-Enabled RAG system built for [Hacker House Goa 2026](https://hhgoa.com/).
 
 ---
 
