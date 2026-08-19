@@ -1,0 +1,47 @@
+# ─── Dependencies ───
+node_modules/
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ─── Environment ───
+.env
+.env.local
+.env.*.local
+
+# ─── IDE ───
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── Next.js ───
+.next/
+out/
+
+# ─── Python virtualenv ───
+venv/
+.venv/
+env/
+
+# ─── Data (generated at runtime) ───
+backend/data/
+backend/benchmarks/results/*.json
+backend/benchmarks/results/*.csv
+
+# ─── Logs ───
+*.log
+
+# ─── Coverage ───
+htmlcov/
+.coverage
+coverage.xml
