@@ -25,8 +25,8 @@ async def submit_query(request: Request, body: QueryRequest) -> QueryResponse:
     """
     Submit a natural-language text query to the SAMVAD pipeline.
 
-    Until the retrieval and generation modules are connected,
-    this endpoint returns a structured not_implemented response.
+    Runs validation, query analysis, configured retrieval, optional reranking,
+    and LLM answer generation with inline source citations when configured.
     """
     rid = (
         sanitize_request_id(body.request_id)
@@ -40,6 +40,8 @@ async def submit_query(request: Request, body: QueryRequest) -> QueryResponse:
             query=body.query,
             request_id=rid,
             language=body.language,
+            retriever_strategy=body.retriever_strategy,
+            top_k=body.top_k,
         )
     finally:
         current_request_id.reset(token)

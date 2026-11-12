@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     )
 
     # --- LLM ---
+    llm_provider: str = Field(
+        default="",
+        description="LLM provider identifier: openai, ollama, or gemini",
+    )
+    llm_base_url: str = Field(
+        default="",
+        description="Base URL for OpenAI-compatible, vLLM, or Ollama LLM endpoints",
+    )
     llm_api_key: Optional[str] = Field(
         default=None,
         description="API key for the LLM provider",
@@ -83,15 +91,32 @@ class Settings(BaseSettings):
     )
 
     # --- Embeddings ---
+    embedding_provider: str = Field(
+        default="local_tfidf_svd",
+        description="Embedding provider: local_tfidf_svd or openai_compatible",
+    )
+    embedding_base_url: str = Field(
+        default="",
+        description="Base URL for OpenAI-compatible or Ollama embedding endpoints",
+    )
     embedding_model: str = Field(
         default="",
         description="Embedding model identifier",
     )
 
-    # --- Vector Database ---
+    # --- Storage & Vector Database ---
+    sqlite_db_path: str = Field(
+        default="./data/samvad.db",
+        description="Path to the local SQLite database for document and chunk metadata",
+    )
     vector_db_path: str = Field(
         default="./data/vector_index",
         description="Path to the local vector index directory",
+    )
+    max_document_upload_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        gt=0,
+        description="Maximum document upload size in bytes",
     )
 
     # --- Ingestion ---

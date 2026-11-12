@@ -1,294 +1,159 @@
-import Header from "@/components/layout/Header";
+"use client";
 
-const PIPELINE_FLOW = [
-  {
-    icon: "🎤",
-    title: "Voice Input",
-    description: "Browser microphone capture (WebM/Opus)",
-    status: "foundation",
-  },
-  {
-    icon: "🗣️",
-    title: "Speech-to-Text",
-    description: "Sarvam AI (primary, Indic-language) or ElevenLabs",
-    status: "interface",
-  },
-  {
-    icon: "🔍",
-    title: "Query Processing",
-    description: "Language detection, query analysis and expansion",
-    status: "interface",
-  },
-  {
-    icon: "📊",
-    title: "Adaptive Retrieval",
-    description:
-      "Dense / Lexical (BM25) / Hybrid retrieval with adaptive routing",
-    status: "interface",
-  },
-  {
-    icon: "📈",
-    title: "Reranking",
-    description: "Cross-encoder reranking of initial candidates",
-    status: "interface",
-  },
-  {
-    icon: "🛡️",
-    title: "Guardrails",
-    description:
-      "Input validation, relevance check, confidence threshold, grounding verification",
-    status: "interface",
-  },
-  {
-    icon: "✅",
-    title: "Grounded Response",
-    description:
-      "LLM-generated answer verified against retrieved evidence, with abstention support",
-    status: "interface",
-  },
-];
-
-const DIFFERENTIATORS = [
-  {
-    title: "Voice-First",
-    description: "Designed for voice interaction from day one",
-  },
-  {
-    title: "Multilingual / Indic",
-    description: "MSMARCO-XI dataset with Indic language coverage via AI4Bharat",
-  },
-  {
-    title: "Multi-Strategy Chunking",
-    description:
-      "Whole-passage, semantic, sliding window, and metadata-aware strategies",
-  },
-  {
-    title: "Adaptive Retrieval",
-    description:
-      "Query-aware routing between dense, lexical, and hybrid strategies",
-  },
-  {
-    title: "Structured Orchestration",
-    description:
-      "Full state machine with retries, fallback, and graceful abstention",
-  },
-  {
-    title: "Real Benchmarks",
-    description: "Actual latency measurements — P50, P70, P100 — never faked",
-  },
-];
-
-type StatusType = "foundation" | "interface" | "planned";
-
-function StatusBadge({ status }: { status: StatusType }) {
-  const config = {
-    foundation: {
-      label: "Foundation Built",
-      color: "bg-success/10 text-success border-success/20",
-    },
-    interface: {
-      label: "Interface Ready",
-      color: "bg-accent/10 text-accent border-accent/20",
-    },
-    planned: {
-      label: "Planned",
-      color: "bg-text-muted/10 text-text-muted border-text-muted/20",
-    },
-  };
-  const c = config[status];
-  return (
-    <span
-      className={`text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full border ${c.color}`}
-    >
-      {c.label}
-    </span>
-  );
-}
+import React, { useEffect, useState } from "react";
+import { getPipelineStatus } from "@/lib/api/client";
+import type { PipelineStatusResponse } from "@/types/api";
+import { AppShell } from "@/components/layout/AppShell";
 
 export default function ArchitecturePage() {
+  const [status, setStatus] = useState<PipelineStatusResponse | null>(null);
+
+  useEffect(() => {
+    getPipelineStatus()
+      .then(setStatus)
+      .catch(() => setStatus(null));
+  }, []);
+
+  const subsystems = [
+    {
+      name: "Document Ingestion & Chunking",
+      phase: "Phase 2 — Live",
+      active: true,
+      detail:
+        "Parses TXT, Markdown, PDF, DOCX, HTML, and JSON with NFC Unicode normalization, SHA-256 deduplication, SQLite chunk provenance, and Indic sentence splitting.",
+    },
+    {
+      name: "Lexical BM25 Retriever",
+      phase: "Phase 2 — Live",
+      active: Boolean(status?.available_strategies.includes("lexical")),
+      detail:
+        "Unicode-aware Okapi BM25 preserving Indic combining matras and Devanagari/Bengali/Tamil script boundaries.",
+    },
+    {
+      name: "Dense Cosine Retriever",
+      phase: "Phase 2 — Live",
+      active: Boolean(status?.available_strategies.includes("dense")),
+      detail: status
+        ? `Provider: ${status.embedding_provider} (${status.embedding_dimension}-dim L2-normalized vectors with on-disk .npz persistence).`
+        : "EmbeddingProvider protocol supporting local TF-IDF+SVD baseline and OpenAI-compatible/Ollama endpoints.",
+    },
+    {
+      name: "Hybrid Reciprocal Rank Fusion (RRF)",
+      phase: "Phase 2 — Live",
+      active: Boolean(status?.available_strategies.includes("hybrid")),
+      detail:
+        "Parallel dense + lexical retrieval merged with weighted RRF (k=60) and single-leg fault tolerance.",
+    },
+    {
+      name: "Provider-Agnostic LLM Answer Generator",
+      phase: status?.llm_configured ? "Phase 2 — Configured" : "Phase 2 — Unconfigured",
+      active: Boolean(status?.llm_configured),
+      detail: status?.llm_configured
+        ? `Active provider '${status.llm_provider}' (${status.llm_model}) with delimited <evidence> prompt-injection isolation and inline [n] citation mapping.`
+        : "Ready in backend; requires LLM_PROVIDER, LLM_MODEL, and optional LLM_API_KEY in backend/.env.",
+    },
+    {
+      name: "Cross-Encoder Reranker",
+      phase: "Phase 3 — Planned",
+      active: Boolean(status?.reranker_configured),
+      detail:
+        "Reranker protocol defined (keeps retrieval_score and reranker_score strictly separated); cross-encoder scoring arrives in Phase 3.",
+    },
+    {
+      name: "Confidence, Grounding & Relevance Guardrails",
+      phase: "Phase 3 — Planned",
+      active: Boolean(status?.guardrails_configured),
+      detail:
+        "InputGuard implemented; NLI grounding verification, relevance scoring, and calibrated confidence gating planned for Phase 3.",
+    },
+    {
+      name: "Multilingual Voice (STT)",
+      phase: "Phase 4 — Planned",
+      active: Boolean(status?.stt_configured),
+      detail:
+        "Validated audio upload endpoint with magic-byte checks and Sarvam/ElevenLabs adapters planned for Phase 4.",
+    },
+  ];
+
+  const flowStages = [
+    "Query",
+    "Validation",
+    "Query Analysis",
+    "Hybrid Retrieval (BM25 + Dense RRF)",
+    "Reranking (opt)",
+    "Confidence Check",
+    "LLM Generation [1][2]",
+    "Grounding Check",
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-
-      <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-10 animate-fade-in">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-            Architecture
-          </h1>
-          <p className="text-sm text-text-muted mt-1">
-            SAMVAD pipeline design and system architecture
-          </p>
-        </div>
-
-        {/* Pipeline Flow */}
-        <section className="mb-12 animate-slide-up">
-          <h2 className="text-xs font-mono font-semibold text-text-muted uppercase tracking-[0.2em] mb-6">
-            Pipeline Flow
-          </h2>
-          <div className="space-y-1">
-            {PIPELINE_FLOW.map((stage, i) => (
-              <div key={stage.title}>
-                <div className="flex items-start gap-4 rounded-xl border border-border-subtle bg-bg-surface/50 p-5 hover:border-border-default transition-colors">
-                  <div className="w-10 h-10 rounded-lg bg-bg-elevated border border-border-default flex items-center justify-center flex-shrink-0 text-lg">
-                    {stage.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-sm font-semibold text-text-primary">
-                        {stage.title}
-                      </h3>
-                      <StatusBadge status={stage.status as StatusType} />
-                    </div>
-                    <p className="text-xs text-text-secondary leading-relaxed">
-                      {stage.description}
-                    </p>
-                  </div>
-                </div>
-                {i < PIPELINE_FLOW.length - 1 && (
-                  <div className="flex justify-start ml-9">
-                    <div className="w-px h-4 bg-border-subtle" />
-                  </div>
-                )}
-              </div>
-            ))}
+    <AppShell
+      pageTitle="Pipeline Explorer & Architecture"
+      pipelineStatus={status}
+    >
+      <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
+        <div className="max-w-5xl mx-auto space-y-6">
+          <div>
+            <h2 className="font-display font-semibold text-xl text-[var(--text-primary)]">
+              SAMVAD Architecture & Live Capability Audit
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
+              Every badge below reflects real capability reporting from{" "}
+              <code className="font-mono-tech text-xs px-1.5 py-0.5 rounded bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                GET /api/v1/pipeline/status
+              </code>
+              .
+            </p>
           </div>
-        </section>
 
-        {/* Differentiators */}
-        <section className="mb-12 animate-slide-up" style={{ animationDelay: "0.1s" }}>
-          <h2 className="text-xs font-mono font-semibold text-text-muted uppercase tracking-[0.2em] mb-6">
-            Key Differentiators
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {DIFFERENTIATORS.map((d) => (
+          {/* Pipeline Sequence Strip */}
+          <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-5 space-y-3">
+            <p className="text-[11px] font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
+              Canonical Execution Flow
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {flowStages.map((stage, idx) => (
+                <React.Fragment key={stage}>
+                  <span className="px-2.5 py-1.5 rounded-md text-xs font-mono-tech bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)]">
+                    {stage}
+                  </span>
+                  {idx < flowStages.length - 1 && (
+                    <span className="text-[var(--text-muted)] text-xs">&rarr;</span>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </section>
+
+          {/* Subsystem Grid */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {subsystems.map((sub) => (
               <div
-                key={d.title}
-                className="rounded-xl border border-border-subtle bg-bg-surface/50 p-5"
+                key={sub.name}
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-4 space-y-2"
               >
-                <h3 className="text-sm font-semibold text-text-primary mb-1">
-                  {d.title}
-                </h3>
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  {d.description}
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-display font-medium text-sm text-[var(--text-primary)]">
+                    {sub.name}
+                  </h3>
+                  <span
+                    className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-mono-tech border ${
+                      sub.active
+                        ? "bg-[var(--status-success-soft)] text-[var(--status-success)] border-[var(--status-success)]/30"
+                        : "bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-subtle)]"
+                    }`}
+                  >
+                    {sub.phase}
+                  </span>
+                </div>
+                <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
+                  {sub.detail}
                 </p>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* Offline vs Online */}
-        <section className="mb-12 animate-slide-up" style={{ animationDelay: "0.2s" }}>
-          <h2 className="text-xs font-mono font-semibold text-text-muted uppercase tracking-[0.2em] mb-6">
-            Offline vs Online Processing
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border-subtle bg-bg-surface/50 p-5">
-              <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-accent" />
-                Offline (Pre-computed)
-              </h3>
-              <ul className="space-y-2 text-xs text-text-secondary">
-                <li>• Dataset download and inspection</li>
-                <li>• Multi-strategy chunking</li>
-                <li>• Embedding generation</li>
-                <li>• Vector index creation</li>
-                <li>• BM25 index building</li>
-                <li>• Persistent storage</li>
-              </ul>
-            </div>
-            <div className="rounded-xl border border-border-subtle bg-bg-surface/50 p-5">
-              <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-success" />
-                Online (Per-request)
-              </h3>
-              <ul className="space-y-2 text-xs text-text-secondary">
-                <li>• Voice input capture</li>
-                <li>• Speech-to-text</li>
-                <li>• Query embedding</li>
-                <li>• Adaptive retrieval</li>
-                <li>• Reranking</li>
-                <li>• Guardrails + Generation</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Implementation Status */}
-        <section className="animate-slide-up" style={{ animationDelay: "0.3s" }}>
-          <h2 className="text-xs font-mono font-semibold text-text-muted uppercase tracking-[0.2em] mb-6">
-            Implementation Status
-          </h2>
-          <div className="rounded-xl border border-border-subtle bg-bg-surface/50 p-6 space-y-4">
-            <StatusGroup
-              title="Foundation ✓"
-              items={[
-                { label: "Frontend foundation (Next.js + TypeScript)", done: true },
-                { label: "Backend foundation (FastAPI + Pydantic)", done: true },
-                { label: "API contracts and schemas", done: true },
-                { label: "Pipeline state architecture", done: true },
-                { label: "Service interfaces and protocols", done: true },
-                { label: "Configuration system", done: true },
-                { label: "Error handling and logging", done: true },
-                { label: "Analytics framework", done: true },
-                { label: "Voice recording infrastructure", done: true },
-              ]}
-            />
-            <div className="border-t border-border-subtle" />
-            <StatusGroup
-              title="Core AI Pipeline"
-              items={[
-                { label: "MSMARCO-XI dataset ingestion", done: false },
-                { label: "Multi-strategy chunking", done: false },
-                { label: "Embedding generation", done: false },
-                { label: "Vector index (FAISS/Qdrant)", done: false },
-                { label: "Dense retrieval", done: false },
-                { label: "Lexical retrieval (BM25)", done: false },
-                { label: "Hybrid retrieval and fusion", done: false },
-                { label: "Adaptive query routing", done: false },
-                { label: "Cross-encoder reranking", done: false },
-                { label: "LLM-based generation", done: false },
-                { label: "Guardrail implementation", done: false },
-                { label: "Real latency benchmarks", done: false },
-              ]}
-            />
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
-    </div>
-  );
-}
-
-function StatusGroup({
-  title,
-  items,
-}: {
-  title: string;
-  items: { label: string; done: boolean }[];
-}) {
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-text-primary mb-3">{title}</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-2">
-            <span
-              className={`text-xs ${
-                item.done ? "text-success" : "text-text-muted"
-              }`}
-            >
-              {item.done ? "✓" : "□"}
-            </span>
-            <span
-              className={`text-xs ${
-                item.done ? "text-text-primary" : "text-text-muted"
-              }`}
-            >
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    </AppShell>
   );
 }

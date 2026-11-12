@@ -5,7 +5,7 @@
 
 ---
 
-## Phase 0 — Foundation & Repository Stabilization *(Current Phase)*
+## Phase 0 — Foundation & Repository Stabilization *(Complete)*
 
 **Objective:** Establish a trustworthy, reproducible, architecturally consistent baseline before writing RAG engine code.
 
@@ -53,22 +53,22 @@
 
 ---
 
-## Phase 2 — First Functional End-to-End Text RAG Engine
+## Phase 2 — First Functional End-to-End Text RAG Engine *(Implemented — LLM Provider Optional via `.env`)*
 
 **Objective:** Deliver the first genuine text-based RAG pipeline with measurable BM25, dense, and hybrid baselines.
 
 ### Milestones
-- **M2.1 Document Ingestion & Provenance:** Implement loaders (TXT, Markdown, PDF via PyMuPDF, DOCX), text normalization, metadata extraction, configurable chunking (`whole_passage`, `fixed_size`, `sliding_window`, `semantic`), deduplication, and SQLite document/chunk provenance store.
-- **M2.2 Embedding Infrastructure:** Implement `EmbeddingProvider` protocol, config-driven registry, local open-source provider (`sentence-transformers`), batching, dimension/model-version validation, and disk/SQLite embedding cache.
-- **M2.3 Sparse, Dense & Hybrid Retrieval:** Implement `LexicalRetriever` (`rank-bm25` / SQLite FTS5), `DenseRetriever` (`FAISS`), `HybridRetriever` (Reciprocal Rank Fusion), and `RetrieverRegistry`.
-- **M2.4 Provider-Agnostic Generation & Citations:** Implement `LLMProvider` abstraction (supporting local Ollama/OpenAI-compatible + hosted APIs), structured evidence packaging, and inline citation mapping.
-- **M2.5 Pipeline Orchestration & Observability:** Connect `PipelineState`, timeouts (`pipeline_timeout_seconds`, `stage_timeout_seconds`), bounded retries, and `MetricsStore` persistence.
+- **M2.1 Document Ingestion & Provenance (`Implemented & Tested`):** Loaders (`TXT`, `MD`, `PDF` via PyMuPDF, `DOCX` via `python-docx`, `HTML`, `JSON`), NFC Unicode normalization, multi-strategy chunking (`whole_passage`, `fixed_size`, `sliding_window`, `semantic`) with Devanagari sentence splitting (`।`, `॥`), SHA-256 deduplication, and SQLite document/chunk provenance store (`backend/app/ingestion/`).
+- **M2.2 Embedding Infrastructure (`Implemented & Tested`):** Canonical `EmbeddingProvider` protocol, offline deterministic `LocalTfidfSVDProvider` baseline, and `OpenAICompatibleEmbeddingProvider` (`/embeddings`) in `backend/app/embeddings/`.
+- **M2.3 Sparse, Dense & Hybrid Retrieval (`Implemented & Tested`):** Unicode/Indic-matra-preserving Okapi `LexicalRetriever` (`backend/app/retrieval/lexical.py`), L2-normalized cosine `DenseRetriever` with `.npz` disk persistence (`backend/app/retrieval/dense.py`), and weighted Reciprocal Rank Fusion `HybridRetriever` (`backend/app/retrieval/hybrid.py`).
+- **M2.4 Provider-Agnostic Generation & Citations (`Implemented & Tested`):** `OpenAICompatibleGenerator` (OpenAI / Ollama / vLLM) and `GeminiGenerator` via `httpx`, delimited `<evidence>` prompt-injection isolation, and `[1]`, `[2]` inline citation mapping (`backend/app/generation/generator.py`).
+- **M2.5 Pipeline Orchestration, Document API & Editorial UI (`Implemented & Tested`):** Wired `PipelineOrchestrator` (`PipelineState`, timeouts, honest `ABSTAINED`/`NOT_IMPLEMENTED` handling, `MetricsStore` latency recording), Document CRUD + `/api/v1/pipeline/status` routes (`backend/app/api/routes_documents.py`), and the 3-zone Editorial Research Workbench frontend (`frontend/app/`).
 
 ### Acceptance Criteria
-- [ ] Documents ingest cleanly with traceable `parent_document_id` and chunk offsets.
-- [ ] BM25, Dense, and Hybrid retrievers run independently and are benchmarked on Phase 1 eval sets.
-- [ ] `POST /api/v1/query` returns grounded answers with real citations or honest abstention.
-- [ ] End-to-end and failure-path integration tests pass with mocked and local providers.
+- [x] Documents ingest cleanly with traceable `parent_document_id`, SHA-256 deduplication, and chunk offsets.
+- [x] BM25, Dense, and Hybrid retrievers run independently and are benchmarked on Phase 1 eval sets (`synthetic_smoke_v1`: `ndcg@5=1.0`, `mrr@5=1.0`, `recall@5=1.0`).
+- [x] `POST /api/v1/query` returns grounded answers with real citations when an LLM is configured, or honest abstention / unconfigured guidance when unconfigured.
+- [x] End-to-end and failure-path integration tests pass (`104 passed` via `pytest -v`).
 
 ---
 

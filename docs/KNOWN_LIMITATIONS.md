@@ -4,12 +4,13 @@
 
 ---
 
-## 1. Current Implementation Limitations (As of Phase 0 Start)
-- **Core AI Pipeline Unimplemented:** Retrieval (dense/BM25/hybrid), reranking, embedding generation, LLM answer generation, STT (`Sarvam`/`ElevenLabs`), document ingestion, and real guardrails are not implemented yet. `POST /api/v1/query` and `POST /api/v1/voice/query` return `status: "not_implemented"`.
-- **No Evaluation Data or Benchmarks:** Zero datasets, ground-truth relevance judgments, or benchmark executions exist. Latency values in `frontend/lib/demo-data.ts` are strictly visual demo fixtures. The `sub-200ms P70` target mentioned in `backend/benchmarks/README.md` is unverified and unlikely to hold end-to-end when calling remote LLM/STT APIs without streaming/caching.
-- **Ephemeral In-Memory Metrics:** `MetricsStore` (`backend/app/analytics/metrics.py`) stores records in an unbounded Python list in RAM. Data is lost on restart and is not shared across multi-worker uvicorn processes.
+## 1. Current Implementation Limitations (As of Phase 2)
+- **LLM Requires External Provider or Local Ollama:** `POST /api/v1/query` runs live retrieval and returns retrieved `sources` and stage timings, but returns `status: "not_implemented"` with setup instructions whenever no LLM credentials (`LLM_PROVIDER`, `LLM_MODEL`, and `LLM_API_KEY` where applicable) are configured in `backend/.env`.
+- **Voice STT, Reranking & NLI Guardrails Planned for Phases 3–4:** `POST /api/v1/voice/query` still returns `status: "not_implemented"` (`SarvamSpeechProvider` / `ElevenLabsSpeechProvider` pending Phase 4). `CrossEncoderReranker` and `RelevanceGuard` / `ConfidenceGuard` / `GroundingGuard` NLI verification remain unimplemented until Phase 3 (`grounded: true` in Phase 2 indicates inline `[n]` citation linkage, not claim-level NLI verification).
+- **Default Dense Baseline Uses TF-IDF + SVD (`LocalTfidfSVDProvider`):** Without an external/Ollama neural embedding server (`EMBEDDING_PROVIDER=openai_compatible`), dense retrieval uses deterministic character n-gram TF-IDF + TruncatedSVD rather than cross-lingual semantic transformers; cross-script semantic similarity requires neural embeddings in Phase 3+.
+- **Ephemeral In-Memory Metrics:** `MetricsStore` (`backend/app/analytics/metrics.py`) stores up to 10,000 latency records in RAM. Data is lost on restart and is not shared across multi-worker uvicorn processes.
 - **No Authentication or Rate Limiting:** API endpoints currently have no authentication or per-client rate limiting. Do **not** expose to untrusted networks with paid API keys configured.
-- **Static Pipeline Visualizer:** `PipelineVisualizer` in the frontend resets stages to `pending` on query submission and does not reflect real backend stage progression (streaming/stage-result transport is not implemented yet).
+- **Only Synthetic Smoke Evaluation Executed Locally:** Retrieval comparisons (`synthetic_smoke_v1` in `backend/benchmarks/datasets/`) verify pipeline wiring only; large external multilingual benchmarks (`AI4Bharat MSMARCO-XI`) remain pending download & validation.
 
 ---
 

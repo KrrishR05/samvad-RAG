@@ -1,8 +1,8 @@
 /**
  * SAMVAD API Types
  *
- * These types mirror the backend Pydantic schemas.
- * Keep in sync with backend/app/schemas/*.py
+ * Mirrors the backend Pydantic schemas in backend/app/schemas/*.py
+ * and backend/app/api/routes_documents.py.
  */
 
 // ─── Enums ───
@@ -41,12 +41,24 @@ export type StageStatus =
   | "skipped"
   | "abstained";
 
+export type RetrieverStrategy = "hybrid" | "dense" | "lexical";
+
+export type ChunkStrategy =
+  | "sliding_window"
+  | "fixed_size"
+  | "semantic"
+  | "whole_passage";
+
+export type DocumentStatus = "uploaded" | "processed" | "indexed" | "failed";
+
 // ─── Request Models ───
 
 export interface QueryRequest {
   query: string;
   request_id?: string;
   language?: string;
+  retriever_strategy?: RetrieverStrategy;
+  top_k?: number;
 }
 
 export interface VoiceQueryRequest {
@@ -82,6 +94,15 @@ export interface LatencyBreakdown {
   total_ms?: number | null;
 }
 
+export interface StageResult {
+  stage: PipelineStage;
+  status: StageStatus;
+  duration_ms?: number | null;
+  output?: unknown;
+  error?: string | null;
+  retries: number;
+}
+
 export interface QueryResponse {
   request_id: string;
   status: QueryStatus;
@@ -91,6 +112,8 @@ export interface QueryResponse {
   confidence?: Confidence | null;
   sources: Source[];
   latency?: LatencyBreakdown | null;
+  stages?: StageResult[];
+  retrieval_method?: string | null;
   message?: string | null;
 }
 
@@ -99,6 +122,55 @@ export interface HealthResponse {
   service: string;
   version: string;
   environment: string;
+}
+
+// ─── Document & Pipeline Status Models ───
+
+export interface DocumentRecord {
+  doc_id: string;
+  filename: string;
+  content_hash: string;
+  media_type: string;
+  language?: string | null;
+  status: DocumentStatus;
+  error_message?: string | null;
+  chunk_count: number;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface DocumentUploadResponse {
+  document: DocumentRecord;
+  duplicate: boolean;
+  total_chunks_indexed: number;
+}
+
+export interface DocumentListResponse {
+  documents: DocumentRecord[];
+  total_documents: number;
+  total_chunks: number;
+}
+
+export interface DocumentDeleteResponse {
+  doc_id: string;
+  deleted: boolean;
+  total_chunks_indexed: number;
+}
+
+export interface PipelineStatusResponse {
+  retrieval_ready: boolean;
+  indexed_documents: number;
+  indexed_chunks: number;
+  available_strategies: string[];
+  embedding_provider: string;
+  embedding_dimension: number;
+  llm_configured: boolean;
+  llm_provider?: string | null;
+  llm_model?: string | null;
+  reranker_configured: boolean;
+  stt_configured: boolean;
+  guardrails_configured: boolean;
 }
 
 // ─── Analytics Models ───

@@ -1,53 +1,93 @@
 @import "tailwindcss";
 
 /*
- * SAMVAD Design System
- *
- * Dark-first, calm, technical, premium.
- * Accent: subtle cyan/teal.
+ * SAMVAD Editorial Research Design System
+ * Dual intentionally crafted themes:
+ *   Dark (default): Obsidian charcoal surfaces (#09090b / #111114 / #18181c), 1px hairlines (#27272a)
+ *   Light: Warm architectural stone (#fafaf9 / #ffffff / #f4f4f5), 1px hairlines (#e4e4e7)
+ * Distinctive Accent: Refined Cobalt-Indigo (#5b6cf9 dark / #4f46e5 light)
  */
 
-@theme {
-  --color-bg-primary: #0a0e17;
-  --color-bg-secondary: #111827;
-  --color-bg-surface: #1a2332;
-  --color-bg-elevated: #1f2a3c;
+:root {
+  --bg-canvas: #09090b;
+  --bg-panel: #111114;
+  --bg-surface: #18181c;
+  --bg-hover: #202026;
 
-  --color-border-subtle: #1e293b;
-  --color-border-default: #2d3a4e;
-  --color-border-accent: #0ea5e9;
+  --border-subtle: #232329;
+  --border-default: #2e2e36;
+  --border-strong: #3f3f4a;
 
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 
-  --color-accent: #0ea5e9;
-  --color-accent-dim: #0c7bb8;
-  --color-accent-glow: rgba(14, 165, 233, 0.15);
-  --color-accent-soft: rgba(14, 165, 233, 0.08);
+  --accent: #5b6cf9;
+  --accent-hover: #6d7cfb;
+  --accent-soft: rgba(91, 108, 249, 0.12);
+  --accent-border: rgba(91, 108, 249, 0.35);
 
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-abstained: #a78bfa;
-}
+  --status-success: #22c55e;
+  --status-success-soft: rgba(34, 197, 94, 0.12);
+  --status-warning: #eab308;
+  --status-warning-soft: rgba(234, 179, 8, 0.12);
+  --status-error: #ef4444;
+  --status-error-soft: rgba(239, 68, 68, 0.12);
+  --status-abstained: #a78bfa;
+  --status-abstained-soft: rgba(167, 139, 250, 0.12);
 
-/* ─── Base ─── */
-
-html {
   color-scheme: dark;
 }
 
+html[data-theme="light"] {
+  --bg-canvas: #fafaf9;
+  --bg-panel: #ffffff;
+  --bg-surface: #f4f4f5;
+  --bg-hover: #ececef;
+
+  --border-subtle: #e4e4e7;
+  --border-default: #d4d4d8;
+  --border-strong: #a1a1aa;
+
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: rgba(79, 70, 229, 0.09);
+  --accent-border: rgba(79, 70, 229, 0.3);
+
+  --status-success: #16a34a;
+  --status-success-soft: rgba(22, 163, 74, 0.1);
+  --status-warning: #ca8a04;
+  --status-warning-soft: rgba(202, 138, 4, 0.1);
+  --status-error: #dc2626;
+  --status-error-soft: rgba(220, 38, 38, 0.1);
+  --status-abstained: #7c3aed;
+  --status-abstained-soft: rgba(124, 58, 237, 0.1);
+
+  color-scheme: light;
+}
+
 body {
-  background: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Scrollbar ─── */
+.font-display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+}
 
+.font-mono-tech {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom Hairline Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -58,57 +98,26 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-default);
-  border-radius: 3px;
+  background: var(--border-default);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+  background: var(--border-strong);
 }
 
-/* ─── Animations ─── */
-
+/* Subtle voice recording ring */
 @keyframes pulse-ring {
   0% {
     transform: scale(1);
-    opacity: 0.6;
+    opacity: 0.55;
   }
   100% {
-    transform: scale(1.8);
+    transform: scale(1.75);
     opacity: 0;
   }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out both;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.5s ease-out both;
 }
 
 .animate-pulse-ring {
-  animation: pulse-ring 1.5s ease-out infinite;
+  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }

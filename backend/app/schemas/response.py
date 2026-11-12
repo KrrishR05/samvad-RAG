@@ -12,6 +12,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from app.schemas.pipeline import StageResult
+
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -135,6 +137,14 @@ class QueryResponse(BaseModel):
     latency: Optional[LatencyBreakdown] = Field(
         default=None,
         description="Per-stage latency breakdown.",
+    )
+    stages: list[StageResult] = Field(
+        default_factory=list,
+        description="Ordered stage execution trace recorded during the run.",
+    )
+    retrieval_method: Optional[str] = Field(
+        default=None,
+        description="Retriever strategy actually executed (e.g. 'hybrid', 'dense', 'lexical').",
     )
     message: Optional[str] = Field(
         default=None,

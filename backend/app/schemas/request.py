@@ -28,6 +28,16 @@ class QueryRequest(BaseModel):
         default=None,
         description="ISO 639-1 language code hint (e.g. 'en', 'hi', 'ta').",
     )
+    retriever_strategy: Optional[str] = Field(
+        default=None,
+        description="Optional retriever strategy override: 'hybrid', 'dense', or 'lexical'.",
+    )
+    top_k: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=50,
+        description="Optional number of chunks to retrieve (overrides server default).",
+    )
 
 
 class VoiceQueryRequest(BaseModel):
