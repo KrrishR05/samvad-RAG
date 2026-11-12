@@ -26,12 +26,12 @@
   - Fix misleading `test_api_v1_health` and add unit tests for `MetricsStore`, upload limits, and guardrail non-noop behavior.
 
 ### Acceptance Criteria
-- [ ] Backend unit & API tests pass in a clean virtual environment.
-- [ ] Frontend lint and production build succeed (requires Node.js 18+ on host/CI).
-- [ ] Zero guardrails silently return `passed=True` without validation.
-- [ ] Request IDs appear in all structured logs and error responses.
-- [ ] Voice uploads enforce byte size limits and format validation.
-- [ ] `docs/` accurately reflects actual implemented state.
+- [x] Backend unit & API tests pass in a clean virtual environment (`78 passed in 1.88s`).
+- [x] Frontend TypeScript check (`tsc --noEmit`), ESLint (`0 errors`), and production build (`next build --webpack`) succeed.
+- [x] Zero guardrails silently return `passed=True` without validation.
+- [x] Request IDs appear in all structured logs and error responses.
+- [x] Voice uploads enforce byte size limits and format validation.
+- [x] `docs/` accurately reflects actual implemented state.
 
 ---
 
@@ -40,15 +40,16 @@
 **Objective:** Make retrieval and pipeline behavior scientifically measurable before building advanced retrieval.
 
 ### Milestones
-- **M1.1 Dataset & Judgment Schemas:** Define typed Pydantic schemas for corpus documents, queries, qrels/relevance judgments, and synthetic-vs-real dataset provenance.
-- **M1.2 Dataset Validation & Integrity:** Inspect and validate an initial benchmark slice (e.g., AI4Bharat MSMARCO-XI schema/license/splits) with checksum and metadata verification.
-- **M1.3 Retrieval Metrics Library:** Implement and unit-test `Recall@K`, `Precision@K`, `MRR@K`, `nDCG@K`, and `HitRate@K` against known hand-calculated fixtures.
-- **M1.4 Reproducible Experiment Runner:** Implement CLI benchmark runner logging Experiment ID, git SHA, dataset version, model/chunking config, per-query JSONL outputs, and aggregate JSON/Markdown reports in `backend/benchmarks/results/`.
+- **M1.1 Dataset & Judgment Schemas (`Implemented & Tested`):** Typed Pydantic models in `backend/app/evaluation/schemas.py` for corpus documents, queries, graded `qrels`, provenance (`real` vs `synthetic`), and structural integrity validation.
+- **M1.2 Dataset Validation & Integrity (`Partially Implemented`):** Local JSON loader, content SHA-256 checksum verification, and schema inspection CLI implemented in `backend/app/evaluation/{loader,cli}.py`; remote HuggingFace `AI4Bharat MSMARCO-XI` schema/license inspection pending `datasets` installation.
+- **M1.3 Retrieval Metrics Library (`Implemented & Tested`):** Deterministic `Recall@K`, `Precision@K`, `MRR@K`, `nDCG@K`, and `HitRate@K` in `backend/app/evaluation/metrics.py` with duplicate-ID protection and per-language aggregation.
+- **M1.4 Reproducible Experiment Runner (`Implemented & Tested`):** Async runner in `backend/app/evaluation/runner.py` persisting immutable `config.json`, `predictions.jsonl`, `summary.json`, and `summary.md` with git SHA and hardware/Python metadata.
 
 ### Acceptance Criteria
-- [ ] All metric functions verified against deterministic unit test fixtures.
-- [ ] Dataset loader validates schema, missing IDs, and duplicate judgments.
-- [ ] Two runs with identical seed/config produce identical retrieval metrics and full provenance metadata.
+- [x] All metric functions verified against deterministic unit test fixtures (`test_evaluation_metrics.py`).
+- [x] Dataset loader/schema validates missing IDs and duplicate judgments.
+- [x] Two runs with identical seed/config produce identical retrieval metrics and full provenance metadata (`test_evaluation_runner.py`).
+- [ ] Real benchmark dataset (e.g., MSMARCO-XI slice) inspected, licensed-checked, and validated.
 
 ---
 

@@ -29,7 +29,8 @@ SAMVAD-RAG is currently a **modular monolith skeleton** consisting of a FastAPI 
 - **Core Infrastructure:** `backend/app/core/config.py` (`pydantic-settings`), `errors.py` (`SamvadError` hierarchy + JSON envelope handlers), `logging.py` (structured format + `current_request_id` `ContextVar`)
 - **Contracts & Schemas:** `backend/app/schemas/{request,response,pipeline,analytics}.py`
 - **Pipeline State Machine:** `backend/app/pipeline/state.py` (`PipelineState`, `VALID_TRANSITIONS` — implemented and unit-tested, not yet wired into `PipelineOrchestrator`)
-- **Analytics Math & Store:** `backend/app/analytics/percentiles.py` (`compute_percentile`, `compute_stats`) and `metrics.py` (thread-safe in-memory `MetricsStore`)
+- **Analytics Math & Store:** `backend/app/analytics/percentiles.py` (`compute_percentile`, `compute_stats`) and `metrics.py` (thread-safe bounded in-memory `MetricsStore`)
+- **Evaluation Harness (Phase 1):** `backend/app/evaluation/{schemas,metrics,runner}.py` (dataset integrity validation, deterministic IR metrics, immutable experiment logging — tested with mock retrievers)
 - **Frontend UI & Mic Capture:** `frontend/hooks/use-voice-recorder.ts` (`MediaRecorder` WebM/Opus capture) and `frontend/lib/api/client.ts`
 
 ### Currently Scaffolded / Unimplemented Modules

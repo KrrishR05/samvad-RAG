@@ -14,9 +14,9 @@
 ---
 
 ## 2. Environment & Tooling Constraints Observed on Host
-- **Host Python Versions:** Host has Python `3.14.6` (missing `pydantic_settings`) and Python `3.10.11`. Neither has a project `.venv` initialized. Note that Python `3.14` may lack pre-built binary wheels for ML packages (`faiss-cpu`, `torch`, `sentence-transformers`)—**Python 3.11 or 3.12** is strongly recommended for Phases 1–5.
-- **Host Node.js Unavailable:** `node`, `npm`, and `npx` are not installed/on PATH on the current Windows host, and `frontend/node_modules` does not exist. Frontend linting and `next build` cannot be verified locally until Node.js 18+ is installed (or via CI).
-- **Docker Unavailable Locally:** `docker` is not installed/on PATH on the current host. `docker-compose.yml` previously referenced nonexistent `backend/Dockerfile` and `frontend/Dockerfile`.
+- **Host Python Versions:** Host has Python `3.14.6` (with `backend/.venv` initialized for Phase 0/1) and Python `3.10.11`. Note that Python `3.14` may lack pre-built binary wheels for ML packages (`faiss-cpu`, `torch`, `sentence-transformers`)—**Python 3.11 or 3.12** is recommended for Phases 2–5. Running `pytest-asyncio` tests on Windows requires loopback socket support (blocked inside strict sandbox isolation).
+- **Host Node.js & Next.js Turbopack on Node 26:** Node.js `v26.13.1` / npm `11.20.0` are installed at `D:\`. On this host, Next.js `16.3.1` default Turbopack panics when spawning the PostCSS CSS worker (`TurbopackInternalError: node process exited before we could connect`), while `next build --webpack` and `tsc --noEmit` succeed cleanly. CI uses Node 20 LTS.
+- **Docker Unavailable Locally:** `docker` is not installed/on PATH on the current host, so `docker-compose.yml`, `backend/Dockerfile`, and `frontend/Dockerfile` remain unbuilt locally.
 
 ---
 
