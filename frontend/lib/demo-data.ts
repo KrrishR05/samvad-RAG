@@ -9,7 +9,7 @@
  * from production views.
  */
 
-import type { QueryResponse, PercentileStats } from "@/types/api";
+import type { QueryResponse } from "@/types/api";
 
 export const DEMO_ANSWERED_RESPONSE: QueryResponse = {
   request_id: "demo-001",

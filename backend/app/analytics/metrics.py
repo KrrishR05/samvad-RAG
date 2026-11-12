@@ -1,16 +1,17 @@
 """
 SAMVAD Analytics — Metrics Store
 
-In-memory store for latency records.
-Provides aggregation methods that use the percentile utilities.
+Thread-safe, bounded in-memory store for latency records.
+Provides aggregation methods using the percentile utilities.
 
-NOTE: This is an in-memory implementation suitable for development.
-For production, replace with a persistent store (e.g. SQLite, Redis).
+NOTE: This is an in-memory implementation suitable for single-process
+development. Phase 2+ will persist records to SQLite.
 """
 
 from __future__ import annotations
 
 import threading
+from collections import deque
 from typing import Optional
 
 from app.analytics.percentiles import compute_stats
@@ -22,18 +23,28 @@ from app.schemas.analytics import (
     StageLatencyStats,
 )
 
+DEFAULT_MAX_RECORDS = 10_000
+
 
 class MetricsStore:
-    """Thread-safe in-memory metrics store."""
+    """Thread-safe bounded in-memory metrics store."""
 
-    def __init__(self) -> None:
-        self._records: list[LatencyRecord] = []
+    def __init__(self, max_records: int = DEFAULT_MAX_RECORDS) -> None:
+        if max_records <= 0:
+            raise ValueError("max_records must be positive.")
+        self._max_records = max_records
+        self._records: deque[LatencyRecord] = deque(maxlen=max_records)
         self._lock = threading.Lock()
 
     def record(self, entry: LatencyRecord) -> None:
-        """Append a latency record."""
+        """Append a latency record (evicting oldest if at capacity)."""
         with self._lock:
             self._records.append(entry)
+
+    def clear(self) -> None:
+        """Remove all stored latency records."""
+        with self._lock:
+            self._records.clear()
 
     @property
     def total_requests(self) -> int:

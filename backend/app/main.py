@@ -20,7 +20,7 @@ from app.api.routes_query import router as query_router
 from app.api.routes_voice import router as voice_router
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
-from app.core.logging import setup_logging, get_logger
+from app.core.logging import RequestIdMiddleware, get_logger, setup_logging
 
 logger = get_logger(__name__)
 
@@ -50,13 +50,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # --- Request Correlation ---
+    app.add_middleware(RequestIdMiddleware)
+
     # --- CORS ---
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
     )
 
     # --- Exception handlers ---

@@ -1,12 +1,7 @@
 """
 SAMVAD Retrieval — Hybrid
 
-Placeholder for hybrid retrieval (dense + lexical fusion).
-
-TODO: Implement candidate fusion strategy.
-  1. Run DenseRetriever and LexicalRetriever in parallel.
-  2. Fuse results using Reciprocal Rank Fusion (RRF) or weighted scoring.
-  3. Return unified candidate list.
+Placeholder conforming to the canonical Retriever protocol (Phase 2).
 """
 
 from __future__ import annotations
@@ -14,23 +9,18 @@ from __future__ import annotations
 from typing import Optional, Sequence
 
 from app.core.errors import RetrievalError
-from app.pipeline.interfaces import RetrievalCandidate
-from app.retrieval.base import BaseRetriever
+from app.pipeline.interfaces import Retriever, ScoredChunk
 
 
-class HybridRetriever(BaseRetriever):
-    """
-    Hybrid retrieval combining dense and lexical strategies.
-
-    TODO: Replace placeholder with real implementation.
-    """
+class HybridRetriever:
+    """Hybrid retrieval combining dense and lexical strategies."""
 
     strategy_name = "hybrid"
 
     def __init__(
         self,
-        dense_retriever: Optional[BaseRetriever] = None,
-        lexical_retriever: Optional[BaseRetriever] = None,
+        dense_retriever: Optional[Retriever] = None,
+        lexical_retriever: Optional[Retriever] = None,
         dense_weight: float = 0.7,
         lexical_weight: float = 0.3,
     ) -> None:
@@ -44,8 +34,7 @@ class HybridRetriever(BaseRetriever):
         query: str,
         top_k: int = 10,
         language: Optional[str] = None,
-    ) -> Sequence[RetrievalCandidate]:
-        # TODO: Implement hybrid fusion retrieval.
+    ) -> Sequence[ScoredChunk]:
         raise RetrievalError("Hybrid retriever is not yet implemented.")
 
     async def health_check(self) -> bool:

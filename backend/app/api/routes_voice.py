@@ -6,11 +6,13 @@ Voice query endpoint (accepts audio upload).
 
 from __future__ import annotations
 
-import uuid
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, Request, UploadFile
 
+from app.core.config import get_settings
+from app.core.logging import current_request_id, sanitize_request_id
+from app.core.upload_validation import read_validated_audio_upload
 from app.pipeline.orchestrator import get_orchestrator
 from app.schemas.response import QueryResponse
 
@@ -23,25 +25,36 @@ router = APIRouter(prefix="/api/v1", tags=["voice"])
     summary="Submit a voice query",
 )
 async def submit_voice_query(
-    audio: UploadFile = File(..., description="Audio file (WAV/WebM/OGG)"),
+    request: Request,
+    audio: UploadFile = File(..., description="Audio file (WAV/WebM/OGG/MP3/FLAC/M4A)"),
     request_id: Optional[str] = Form(default=None),
     language: Optional[str] = Form(default=None),
 ) -> QueryResponse:
     """
     Submit an audio recording to the SAMVAD voice pipeline.
 
-    The audio is sent to the configured STT provider for transcription,
-    then processed through the full retrieval and generation pipeline.
-
-    Until the STT provider and downstream services are connected,
+    Validates audio upload size and format before passing bytes to the STT
+    pipeline. Until the STT provider and downstream services are connected,
     this endpoint returns a structured not_implemented response.
     """
-    rid = request_id or str(uuid.uuid4())
-    audio_bytes = await audio.read()
-
-    orchestrator = get_orchestrator()
-    return await orchestrator.run_voice_query(
-        audio_data=audio_bytes,
-        request_id=rid,
-        language=language,
+    rid = (
+        sanitize_request_id(request_id)
+        if request_id
+        else getattr(request.state, "request_id", None) or sanitize_request_id(None)
     )
+    token = current_request_id.set(rid)
+    try:
+        settings = get_settings()
+        audio_bytes = await read_validated_audio_upload(
+            upload=audio,
+            max_bytes=settings.max_audio_upload_bytes,
+            request_id=rid,
+        )
+        orchestrator = get_orchestrator()
+        return await orchestrator.run_voice_query(
+            audio_data=audio_bytes,
+            request_id=rid,
+            language=language,
+        )
+    finally:
+        current_request_id.reset(token)

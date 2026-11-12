@@ -1,12 +1,7 @@
 """
 SAMVAD Retrieval — Reranker
 
-Placeholder for the reranking stage.
-
-TODO: Implement cross-encoder or model-based reranker.
-  1. Receive initial retrieval candidates.
-  2. Score each candidate against the query with a cross-encoder.
-  3. Re-sort and return top-K.
+Placeholder conforming to the canonical Reranker protocol (Phase 3).
 """
 
 from __future__ import annotations
@@ -14,24 +9,16 @@ from __future__ import annotations
 from typing import Sequence
 
 from app.core.errors import RetrievalError
-from app.pipeline.interfaces import RetrievalCandidate, RerankResult
+from app.pipeline.interfaces import ScoredChunk
 
 
 class CrossEncoderReranker:
-    """
-    Rerank candidates using a cross-encoder model.
-
-    TODO: Replace placeholder with real implementation.
-    Required: a cross-encoder model (e.g. ms-marco-MiniLM).
-    """
+    """Rerank candidates using a cross-encoder model."""
 
     async def rerank(
         self,
         query: str,
-        candidates: Sequence[RetrievalCandidate],
+        candidates: Sequence[ScoredChunk],
         top_k: int = 5,
-    ) -> Sequence[RerankResult]:
-        """
-        TODO: Implement cross-encoder reranking.
-        """
+    ) -> Sequence[ScoredChunk]:
         raise RetrievalError("Reranker is not yet implemented.")

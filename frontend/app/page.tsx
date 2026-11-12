@@ -46,15 +46,17 @@ export default function HomePage() {
     }
   };
 
+  const { state: recorderState, audioBlob, reset: resetRecorder } = recorder;
+
   // Submit voice recording automatically when audioBlob is ready and state is stopped
   useEffect(() => {
-    if (recorder.state === "stopped" && recorder.audioBlob) {
+    if (recorderState === "stopped" && audioBlob) {
       const submitVoice = async () => {
         setIsLoading(true);
         setResponse(null);
         resetStages();
         try {
-          const result = await submitVoiceQuery(recorder.audioBlob!);
+          const result = await submitVoiceQuery(audioBlob);
           setResponse(result);
         } catch (err) {
           setResponse({
@@ -68,12 +70,12 @@ export default function HomePage() {
           });
         } finally {
           setIsLoading(false);
-          recorder.reset();
+          resetRecorder();
         }
       };
       submitVoice();
     }
-  }, [recorder.state, recorder.audioBlob, recorder]);
+  }, [recorderState, audioBlob, resetRecorder]);
 
   return (
     <div className="min-h-screen flex flex-col">

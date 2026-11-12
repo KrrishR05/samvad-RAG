@@ -19,7 +19,7 @@ This directory will contain the MSMARCO-XI dataset ingestion pipeline.
 ## Integration Points
 
 - Chunk metadata schema: `backend/app/schemas/pipeline.py → ChunkMetadata`
-- Retrieval interface: `backend/app/retrieval/base.py → BaseRetriever`
+- Retrieval interface: `backend/app/pipeline/interfaces.py → Retriever`
 - Config: `backend/app/core/config.py → dataset_cache_dir, vector_db_path, embedding_model`
 
 ## Notes

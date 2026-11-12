@@ -1,31 +1,20 @@
 """
 SAMVAD Guardrails — Interface Stubs
 
-Placeholder implementations for all guardrail types.
-
-TODO: Implement each guardrail with actual logic.
+Guardrail implementations matching the canonical GuardrailService protocol.
+Unimplemented guardrails fail explicitly with NotImplementedError rather than
+returning misleading `passed=True` results.
 """
 
 from __future__ import annotations
 
 from typing import Optional, Sequence
 
-from app.guardrails.base import BaseGuardrail
-from app.pipeline.interfaces import GuardrailResult, RetrievalCandidate
+from app.pipeline.interfaces import GuardrailResult, ScoredChunk
 
 
-class InputGuard(BaseGuardrail):
-    """
-    Validates input quality before processing.
-
-    Checks for:
-      - Empty audio / no detected speech
-      - Empty transcript
-      - Invalid request format
-      - STT failures
-
-    TODO: Implement concrete validation rules.
-    """
+class InputGuard:
+    """Validates basic query input quality before pipeline execution."""
 
     guardrail_name = "input_guard"
 
@@ -34,26 +23,26 @@ class InputGuard(BaseGuardrail):
         *,
         query: Optional[str] = None,
         answer: Optional[str] = None,
-        context: Optional[Sequence[RetrievalCandidate]] = None,
+        context: Optional[Sequence[ScoredChunk]] = None,
         confidence: Optional[float] = None,
     ) -> GuardrailResult:
-        # Basic input validation (can be used now)
-        if query is not None and len(query.strip()) == 0:
+        if query is None or len(query.strip()) == 0:
             return GuardrailResult(
                 passed=False,
                 reason="Empty or whitespace-only query.",
                 action="abstain",
             )
+        if "\x00" in query:
+            return GuardrailResult(
+                passed=False,
+                reason="Query contains invalid null-byte characters.",
+                action="abstain",
+            )
         return GuardrailResult(passed=True)
 
 
-class RelevanceGuard(BaseGuardrail):
-    """
-    Checks whether retrieved context is sufficiently relevant.
-
-    TODO: Implement relevance threshold logic based on
-    retrieval scores and/or reranker scores.
-    """
+class RelevanceGuard:
+    """Checks whether retrieved context is sufficiently relevant (Phase 4)."""
 
     guardrail_name = "relevance_guard"
 
@@ -62,19 +51,14 @@ class RelevanceGuard(BaseGuardrail):
         *,
         query: Optional[str] = None,
         answer: Optional[str] = None,
-        context: Optional[Sequence[RetrievalCandidate]] = None,
+        context: Optional[Sequence[ScoredChunk]] = None,
         confidence: Optional[float] = None,
     ) -> GuardrailResult:
-        # TODO: Implement relevance checking.
-        return GuardrailResult(passed=True)
+        raise NotImplementedError("RelevanceGuard is not yet implemented.")
 
 
-class ConfidenceGuard(BaseGuardrail):
-    """
-    Prevents generation when retrieval confidence is too low.
-
-    TODO: Implement confidence threshold logic.
-    """
+class ConfidenceGuard:
+    """Prevents generation when retrieval confidence is too low (Phase 4)."""
 
     guardrail_name = "confidence_guard"
 
@@ -83,19 +67,14 @@ class ConfidenceGuard(BaseGuardrail):
         *,
         query: Optional[str] = None,
         answer: Optional[str] = None,
-        context: Optional[Sequence[RetrievalCandidate]] = None,
+        context: Optional[Sequence[ScoredChunk]] = None,
         confidence: Optional[float] = None,
     ) -> GuardrailResult:
-        # TODO: Implement confidence threshold.
-        return GuardrailResult(passed=True)
+        raise NotImplementedError("ConfidenceGuard is not yet implemented.")
 
 
-class GroundingGuard(BaseGuardrail):
-    """
-    Verifies that the generated answer is grounded in evidence.
-
-    TODO: Implement grounding verification.
-    """
+class GroundingGuard:
+    """Verifies that the generated answer is grounded in evidence (Phase 4)."""
 
     guardrail_name = "grounding_guard"
 
@@ -104,8 +83,7 @@ class GroundingGuard(BaseGuardrail):
         *,
         query: Optional[str] = None,
         answer: Optional[str] = None,
-        context: Optional[Sequence[RetrievalCandidate]] = None,
+        context: Optional[Sequence[ScoredChunk]] = None,
         confidence: Optional[float] = None,
     ) -> GuardrailResult:
-        # TODO: Implement grounding check.
-        return GuardrailResult(passed=True)
+        raise NotImplementedError("GroundingGuard is not yet implemented.")

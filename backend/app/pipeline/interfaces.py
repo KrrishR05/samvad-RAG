@@ -1,32 +1,22 @@
 """
 SAMVAD Pipeline Service Interfaces
 
-Abstract protocols that every pipeline service must implement.
-These are the **integration points** where the core RAG
-functionality will be connected by the next developer.
-
-Each protocol defines:
-  - Expected input types
-  - Expected output types
-  - Error behaviour (raise the appropriate SamvadError subclass)
-
-Use Python's Protocol for structural subtyping — implementors
-do not need to explicitly inherit; they just need to match the
-method signatures.
+Canonical Protocols and inter-stage data containers for the SAMVAD pipeline.
+All subsystem providers implement these structural interfaces without needing
+parallel ABC hierarchies.
 """
 
 from __future__ import annotations
 
-from abc import abstractmethod
-from dataclasses import dataclass
-from typing import Any, Optional, Protocol, Sequence
+from dataclasses import dataclass, field
+from typing import Any, Optional, Protocol, Sequence, runtime_checkable
 
 from app.schemas.pipeline import ChunkMetadata
 from app.schemas.response import Source
 
 
 # ---------------------------------------------------------------------------
-# Data containers passed between stages
+# Canonical data containers passed between stages
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -47,27 +37,24 @@ class AnalyzedQuery:
     processed_text: str
     language: Optional[str] = None
     intent: Optional[str] = None
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
-class RetrievalCandidate:
-    """A single candidate returned by a retriever."""
+class ScoredChunk:
+    """
+    Canonical representation of a retrieved and/or reranked passage.
+
+    Keeps retrieval and reranker scores strictly separate so incompatible
+    score scales (e.g. BM25, cosine similarity, cross-encoder logits) are
+    never conflated.
+    """
 
     chunk_id: str
     text: str
-    score: float
-    metadata: ChunkMetadata | None = None
-
-
-@dataclass
-class RerankResult:
-    """A candidate after reranking."""
-
-    chunk_id: str
-    text: str
-    original_score: float
-    reranker_score: float
+    retrieval_score: Optional[float] = None
+    reranker_score: Optional[float] = None
+    retrieval_method: Optional[str] = None
     metadata: ChunkMetadata | None = None
 
 
@@ -78,7 +65,7 @@ class GenerationResult:
     answer: str
     grounded: Optional[bool] = None
     confidence_score: Optional[float] = None
-    sources_used: list[Source] | None = None
+    sources_used: list[Source] = field(default_factory=list)
 
 
 @dataclass
@@ -92,173 +79,109 @@ class GuardrailResult:
 
 
 # ---------------------------------------------------------------------------
-# Service Protocols
+# Canonical Service Protocols
 # ---------------------------------------------------------------------------
 
+@runtime_checkable
 class SpeechService(Protocol):
-    """
-    Transcribe audio input to text.
+    """Transcribe audio input to text."""
 
-    TODO: Implement SarvamSpeechProvider and ElevenLabsSpeechProvider.
-    """
+    provider_name: str
 
-    @abstractmethod
     async def transcribe(
         self,
         audio_data: bytes,
         language: str | None = None,
     ) -> TranscriptionResult:
-        """
-        Transcribe raw audio bytes to text.
+        """Transcribe raw audio bytes to text. Raises SpeechProcessingError on failure."""
+        ...
 
-        Args:
-            audio_data: Raw audio bytes (WAV/WebM/OGG).
-            language: Optional language hint (ISO 639-1).
-
-        Returns:
-            TranscriptionResult with transcribed text.
-
-        Raises:
-            SpeechProcessingError on failure.
-        """
+    async def health_check(self) -> bool:
+        """Return True if the speech provider is ready/reachable."""
         ...
 
 
+@runtime_checkable
 class QueryAnalyzer(Protocol):
-    """
-    Analyse and optionally transform the user's query
-    before retrieval (e.g. language detection, expansion).
+    """Analyze and optionally normalize/transform the user's query before retrieval."""
 
-    TODO: Implement when query processing logic is finalised.
-    """
-
-    @abstractmethod
     async def analyze(self, query: str) -> AnalyzedQuery:
         ...
 
 
+@runtime_checkable
 class Retriever(Protocol):
-    """
-    Retrieve candidate passages from the index.
+    """Retrieve candidate passages from an index (dense, lexical, hybrid)."""
 
-    Implementations may use dense, lexical (BM25), hybrid,
-    or adaptive strategies.
+    strategy_name: str
 
-    TODO: Implement DenseRetriever, LexicalRetriever, HybridRetriever.
-    """
-
-    @abstractmethod
     async def retrieve(
         self,
         query: str,
         top_k: int = 10,
         language: str | None = None,
-    ) -> Sequence[RetrievalCandidate]:
-        """
-        Retrieve top-K candidates for the given query.
+    ) -> Sequence[ScoredChunk]:
+        """Retrieve top-K candidates for the given query. Raises RetrievalError on failure."""
+        ...
 
-        Raises:
-            RetrievalError on failure.
-        """
+    async def health_check(self) -> bool:
+        """Return True if the underlying index is available."""
         ...
 
 
+@runtime_checkable
 class Reranker(Protocol):
-    """
-    Re-score and re-order retrieval candidates.
+    """Re-score and re-order retrieval candidates."""
 
-    TODO: Implement cross-encoder or model-based reranker.
-    """
-
-    @abstractmethod
     async def rerank(
         self,
         query: str,
-        candidates: Sequence[RetrievalCandidate],
+        candidates: Sequence[ScoredChunk],
         top_k: int = 5,
-    ) -> Sequence[RerankResult]:
-        """
-        Rerank candidates and return the top-K results.
-
-        Raises:
-            RetrievalError on failure.
-        """
+    ) -> Sequence[ScoredChunk]:
+        """Rerank candidates and return the top-K results. Raises RetrievalError on failure."""
         ...
 
 
+@runtime_checkable
 class AnswerGenerator(Protocol):
-    """
-    Generate a grounded answer given a query and context.
+    """Generate a grounded answer given a query and evidence chunks."""
 
-    TODO: Implement LLM-based generator with grounding.
-    """
-
-    @abstractmethod
     async def generate(
         self,
         query: str,
-        context: Sequence[RerankResult] | Sequence[RetrievalCandidate],
+        context: Sequence[ScoredChunk],
         language: str | None = None,
     ) -> GenerationResult:
-        """
-        Generate an answer grounded in the provided context.
-
-        Raises:
-            GenerationError on failure.
-        """
+        """Generate an answer grounded in the provided context. Raises GenerationError on failure."""
         ...
 
 
+@runtime_checkable
 class GuardrailService(Protocol):
-    """
-    Apply safety and quality guardrails.
+    """Apply safety and quality guardrails."""
 
-    Implementations include:
-      - InputGuard: validate input quality
-      - RelevanceGuard: check retrieval relevance
-      - ConfidenceGuard: check confidence threshold
-      - GroundingGuard: verify answer grounding
+    guardrail_name: str
 
-    TODO: Implement concrete guardrails.
-    """
-
-    @abstractmethod
     async def check(
         self,
         *,
         query: str | None = None,
         answer: str | None = None,
-        context: Sequence[RetrievalCandidate] | None = None,
+        context: Sequence[ScoredChunk] | None = None,
         confidence: float | None = None,
     ) -> GuardrailResult:
-        """
-        Run the guardrail check.
-
-        Returns:
-            GuardrailResult indicating pass/fail and action.
-
-        Raises:
-            GuardrailError on check failure.
-        """
+        """Run the guardrail check. Raises GuardrailError or NotImplementedError if unavailable."""
         ...
 
 
+@runtime_checkable
 class QueryRouter(Protocol):
-    """
-    Decide which retrieval strategy to use for a given query.
+    """Decide which registered retrieval strategy key to use for a given query."""
 
-    TODO: Implement adaptive routing logic.
-    """
-
-    @abstractmethod
     async def route(
         self,
         query: AnalyzedQuery,
     ) -> str:
-        """
-        Return the retrieval strategy identifier.
-
-        Returns:
-            Strategy name, e.g. "dense", "lexical", "hybrid".
-        """
+        """Return the retrieval strategy key (e.g. 'dense', 'lexical', 'hybrid')."""
         ...

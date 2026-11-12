@@ -2,7 +2,7 @@
 
 > **Speak. Retrieve. Ground.**
 
-Adaptive Voice-Enabled RAG system built for [Hacker House Goa 2026](https://hhgoa.com/).
+Adaptive Voice-Enabled RAG system.
 
 ---
 
@@ -92,19 +92,26 @@ samvad-rag/
 │   │   ├── core/                # Config, logging, errors
 │   │   ├── schemas/             # Pydantic models
 │   │   ├── pipeline/            # Orchestrator, state, interfaces
-│   │   ├── speech/              # STT providers (Sarvam, ElevenLabs)
-│   │   ├── retrieval/           # Dense, lexical, hybrid, router, reranker
-│   │   ├── generation/          # LLM generator
-│   │   ├── guardrails/          # Input, relevance, confidence, grounding
-│   │   └── analytics/           # Metrics store, percentile calculations
+│   │   ├── speech/              # STT providers (Sarvam, ElevenLabs stubs)
+│   │   ├── retrieval/           # Dense, lexical, hybrid, router, reranker stubs
+│   │   ├── generation/          # LLM generator stub
+│   │   ├── guardrails/          # Input guard + fail-closed stubs
+│   │   └── analytics/           # Bounded metrics store, percentile calculations
 │   ├── ingestion/               # Dataset ingestion (planned)
 │   ├── benchmarks/              # Benchmark runner and results
 │   ├── tests/                   # Test suite
+│   ├── Dockerfile
 │   └── requirements.txt
 │
 ├── docs/
-│   └── architecture.md          # Detailed architecture documentation
+│   ├── MASTER_PROJECT_DIRECTIVE.md
+│   ├── ROADMAP.md
+│   ├── architecture.md          # Implemented & target architecture
+│   ├── DECISIONS.md             # Architectural Decision Records
+│   ├── KNOWN_LIMITATIONS.md     # Current gaps & host constraints
+│   └── EVALUATION_STRATEGY.md   # Metrics, datasets, reproducibility rules
 │
+├── .github/workflows/ci.yml
 ├── .env.example                 # Environment variable template
 ├── .gitignore
 ├── docker-compose.yml
@@ -117,8 +124,8 @@ samvad-rag/
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
+- Python 3.11–3.13 recommended (3.12 used in CI; ML wheel compatibility on 3.14 is unverified)
+- Node.js 18+ (20 recommended)
 - npm
 
 ### Backend

@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 
 export type RecorderState =
   | "idle"
@@ -100,12 +100,15 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
     setState("idle");
   }, []);
 
-  return {
-    state,
-    audioBlob,
-    error,
-    startRecording,
-    stopRecording,
-    reset,
-  };
+  return useMemo(
+    () => ({
+      state,
+      audioBlob,
+      error,
+      startRecording,
+      stopRecording,
+      reset,
+    }),
+    [state, audioBlob, error, startRecording, stopRecording, reset]
+  );
 }

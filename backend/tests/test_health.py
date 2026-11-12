@@ -1,5 +1,5 @@
 """
-Tests — Health endpoint
+Tests — Health endpoint & Request Correlation
 """
 
 import pytest
@@ -20,13 +20,14 @@ async def test_health_endpoint():
     assert data["service"] == "samvad-api"
     assert "version" in data
     assert "environment" in data
+    assert "x-request-id" in resp.headers
 
 
 @pytest.mark.asyncio
-async def test_api_v1_health():
-    """The /api/v1/health path should also resolve (alias via router prefix)."""
+async def test_health_echoes_valid_request_id():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.get("/health")
+        resp = await client.get("/health", headers={"X-Request-ID": "req-abc-123"})
 
     assert resp.status_code == 200
+    assert resp.headers.get("x-request-id") == "req-abc-123"

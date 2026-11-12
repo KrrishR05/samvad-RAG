@@ -6,14 +6,15 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.core.errors import (
-    SamvadError,
-    SpeechProcessingError,
-    RetrievalError,
+    ConfigurationError,
     GenerationError,
     GuardrailError,
-    ConfigurationError,
-    PipelineTimeoutError,
     InputValidationError,
+    PayloadTooLargeError,
+    PipelineTimeoutError,
+    RetrievalError,
+    SamvadError,
+    SpeechProcessingError,
 )
 
 
@@ -63,6 +64,12 @@ def test_input_validation_error():
     assert err.status_code == 400
 
 
+def test_payload_too_large_error():
+    err = PayloadTooLargeError()
+    assert err.code == "PAYLOAD_TOO_LARGE"
+    assert err.status_code == 413
+
+
 @pytest.mark.asyncio
 async def test_query_endpoint_returns_not_implemented():
     """Query endpoint should return not_implemented when pipeline is not wired."""
@@ -72,10 +79,10 @@ async def test_query_endpoint_returns_not_implemented():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/api/v1/query",
-            json={"query": "What is SAMVAD?"},
+            json={"query": "What is SAMVAD?", "request_id": "custom-req-1"},
         )
 
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "not_implemented"
-    assert "request_id" in data
+    assert data["request_id"] == "custom-req-1"
