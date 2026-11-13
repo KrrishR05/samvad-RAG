@@ -27,6 +27,9 @@ pytest-asyncio>=0.25.0
 # Retrieval
 # rank-bm25>=0.2.2
 
+# Local embedding baseline
+scikit-learn>=1.5.0
+
 # LLM
 # openai>=1.50.0
 # google-generativeai>=0.8.0
@@ -34,4 +37,4 @@ pytest-asyncio>=0.25.0
 # Data Processing
 # datasets>=3.0.0   # For MSMARCO-XI via HuggingFace
 # pandas>=2.2.0
-# numpy>=2.0.0
+numpy>=2.0.0
