@@ -28,6 +28,7 @@ VALID_TRANSITIONS: dict[PipelineStage, set[PipelineStage]] = {
     PipelineStage.TRANSCRIBING: {
         PipelineStage.VALIDATING,
         PipelineStage.ERROR,
+        PipelineStage.ABSTAINED,
     },
     PipelineStage.VALIDATING: {
         PipelineStage.QUERY_ANALYSIS,

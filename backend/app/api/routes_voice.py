@@ -29,13 +29,14 @@ async def submit_voice_query(
     audio: UploadFile = File(..., description="Audio file (WAV/WebM/OGG/MP3/FLAC/M4A)"),
     request_id: Optional[str] = Form(default=None),
     language: Optional[str] = Form(default=None),
+    retriever_strategy: Optional[str] = Form(default=None),
+    top_k: Optional[int] = Form(default=None),
 ) -> QueryResponse:
     """
     Submit an audio recording to the SAMVAD voice pipeline.
 
-    Validates audio upload size and format before passing bytes to the STT
-    pipeline. Until the STT provider and downstream services are connected,
-    this endpoint returns a structured not_implemented response.
+    Validates audio upload size and format, executes transcription via the
+    configured SpeechService, and runs retrieval and evidence grounding.
     """
     rid = (
         sanitize_request_id(request_id)
@@ -55,6 +56,8 @@ async def submit_voice_query(
             audio_data=audio_bytes,
             request_id=rid,
             language=language,
+            retriever_strategy=retriever_strategy,
+            top_k=top_k,
         )
     finally:
         current_request_id.reset(token)

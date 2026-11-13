@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { RetrieverStrategy } from "@/types/api";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { MicIcon, SendIcon, StopIcon } from "@/components/ui/Icons";
@@ -14,7 +14,12 @@ interface QueryComposerProps {
     strategy: RetrieverStrategy;
     topK: number;
   }) => void;
-  onSubmitVoice: (blob: Blob, language?: string) => void;
+  onSubmitVoice: (
+    blob: Blob,
+    language?: string,
+    strategy?: RetrieverStrategy,
+    topK?: number
+  ) => void;
   disabled?: boolean;
   defaultStrategy?: RetrieverStrategy;
 }
@@ -50,6 +55,16 @@ export function QueryComposer({
   const [topK, setTopK] = useState<number>(5);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const voiceOptions = useMemo(
+    () => ({
+      language: language || undefined,
+      onLiveTranscript: (text: string) => {
+        onQueryChange(text);
+      },
+    }),
+    [language, onQueryChange]
+  );
+
   const {
     state: recState,
     audioBlob,
@@ -57,14 +72,14 @@ export function QueryComposer({
     startRecording,
     stopRecording,
     reset: resetRecorder,
-  } = useVoiceRecorder();
+  } = useVoiceRecorder(voiceOptions);
 
   useEffect(() => {
     if (recState === "stopped" && audioBlob) {
-      onSubmitVoice(audioBlob, language || undefined);
+      onSubmitVoice(audioBlob, language || undefined, strategy, topK);
       resetRecorder();
     }
-  }, [recState, audioBlob, language, onSubmitVoice, resetRecorder]);
+  }, [recState, audioBlob, language, strategy, topK, onSubmitVoice, resetRecorder]);
 
   // Auto-resize textarea cleanly up to ~180px
   useEffect(() => {
@@ -102,16 +117,28 @@ export function QueryComposer({
         onSubmit={handleSubmit}
         className="max-w-3xl mx-auto rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] focus-within:border-[var(--accent-border)] transition-colors"
       >
+        {isRecording && (
+          <div className="px-4 py-2 flex items-center justify-between text-xs border-b border-[var(--border-subtle)] bg-[var(--status-error-soft)] text-[var(--status-error)] rounded-t-xl">
+            <span className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[var(--status-error)] animate-pulse" />
+              <span className="font-medium font-mono-tech">Listening to microphone... speak now</span>
+            </span>
+            <span className="text-[11px] font-mono-tech text-[var(--text-secondary)]">
+              Click red stop button when finished
+            </span>
+          </div>
+        )}
+
         <textarea
           ref={textareaRef}
           rows={1}
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={disabled || isRecording}
+          disabled={disabled}
           placeholder={
             isRecording
-              ? "Recording microphone input... click stop to send."
+              ? "Listening... spoken words will appear here live as you talk."
               : "Ask a research question across your indexed documents..."
           }
           className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-[14.5px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-60"

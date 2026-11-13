@@ -10,7 +10,7 @@ from app.core.config import Environment, STTProvider, Settings
 
 def test_default_settings():
     """Settings should load with sensible defaults."""
-    settings = Settings()
+    settings = Settings(_env_file=None)
     assert settings.environment == Environment.DEVELOPMENT
     assert settings.app_name == "samvad-api"
     assert settings.backend_port == 8000

@@ -16,6 +16,7 @@ import type {
   PipelineStatusResponse,
   QueryRequest,
   QueryResponse,
+  RetrieverStrategy,
 } from "@/types/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -72,12 +73,16 @@ export async function submitTextQuery(body: QueryRequest): Promise<QueryResponse
 export async function submitVoiceQuery(
   audio: Blob,
   requestId?: string,
-  language?: string
+  language?: string,
+  retrieverStrategy?: RetrieverStrategy,
+  topK?: number
 ): Promise<QueryResponse> {
   const formData = new FormData();
   formData.append("audio", audio, "recording.webm");
   if (requestId) formData.append("request_id", requestId);
   if (language) formData.append("language", language);
+  if (retrieverStrategy) formData.append("retriever_strategy", retrieverStrategy);
+  if (topK !== undefined) formData.append("top_k", String(topK));
 
   const res = await fetch(`${API_BASE}/api/v1/voice/query`, {
     method: "POST",

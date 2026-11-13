@@ -24,6 +24,7 @@ class Environment(str, Enum):
 class STTProvider(str, Enum):
     SARVAM = "sarvam"
     ELEVENLABS = "elevenlabs"
+    GEMINI = "gemini"
 
 
 class Settings(BaseSettings):

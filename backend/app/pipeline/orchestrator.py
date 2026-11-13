@@ -108,17 +108,86 @@ class PipelineOrchestrator:
         audio_data: bytes,
         request_id: Optional[str] = None,
         language: Optional[str] = None,
+        retriever_strategy: Optional[str] = None,
+        top_k: Optional[int] = None,
     ) -> QueryResponse:
         """
-        Execute the full voice pipeline.
-
-        Returns a not_implemented response until the speech service
-        and downstream services are connected (Phase 4).
+        Execute the full voice pipeline:
+          audio_data -> STT Transcription -> Text RAG Pipeline
         """
         rid = sanitize_request_id(request_id)
         if self.speech_service is None:
             return self._not_implemented(rid, stage="speech-to-text")
-        return self._not_implemented(rid, stage="voice-pipeline")
+
+        ps = PipelineState(request_id=rid)
+        cfg = self.settings or get_settings()
+
+        # 1. Listening / Ingestion
+        ps.begin_stage(PipelineStage.LISTENING)
+        ps.complete_stage(output={"audio_bytes": len(audio_data)})
+
+        # 2. Transcribing
+        ps.begin_stage(PipelineStage.TRANSCRIBING)
+        try:
+            transcription = await asyncio.wait_for(
+                self.speech_service.transcribe(audio_data, language=language),
+                timeout=cfg.stage_timeout_seconds,
+            )
+        except Exception as exc:
+            ps.complete_stage(error=str(exc))
+            ps.transition_to(PipelineStage.ERROR)
+            raise
+
+        stt_stage = ps.complete_stage(
+            output={
+                "provider": getattr(self.speech_service, "provider_name", "stt"),
+                "transcript": transcription.text,
+            }
+        )
+
+        transcript = transcription.text.strip()
+        if not transcript:
+            ps.transition_to(PipelineStage.ABSTAINED)
+            return QueryResponse(
+                request_id=rid,
+                status=QueryStatus.ABSTAINED,
+                transcript="",
+                message="No speech detected in the audio recording.",
+                stages=ps.results,
+            )
+
+        # 3. Proceed through query validation and text pipeline
+        text_response = await self.run_text_query(
+            query=transcript,
+            request_id=rid,
+            language=transcription.language or language,
+            retriever_strategy=retriever_strategy,
+            top_k=top_k,
+        )
+
+        combined_stages = [
+            ps.results[0],  # LISTENING
+            stt_stage,      # TRANSCRIBING
+        ] + [st for st in text_response.stages if st.stage not in (PipelineStage.LISTENING, PipelineStage.TRANSCRIBING)]
+
+        merged_latency = text_response.latency or LatencyBreakdown()
+        merged_latency.stt_ms = stt_stage.duration_ms
+        if merged_latency.total_ms is not None and stt_stage.duration_ms is not None:
+            merged_latency.total_ms = round(merged_latency.total_ms + stt_stage.duration_ms, 2)
+
+        return QueryResponse(
+            request_id=rid,
+            status=text_response.status,
+            transcript=transcript,
+            answer=text_response.answer,
+            grounded=text_response.grounded,
+            confidence=text_response.confidence,
+            sources=text_response.sources,
+            latency=merged_latency,
+            stages=combined_stages,
+            retrieval_method=text_response.retrieval_method,
+            message=text_response.message,
+        )
 
     async def run_text_query(
         self,

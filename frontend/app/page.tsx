@@ -294,18 +294,24 @@ export default function ResearchWorkspacePage() {
   );
 
   const handleSubmitVoice = useCallback(
-    async (blob: Blob, language?: string) => {
+    async (
+      blob: Blob,
+      language?: string,
+      strategy?: RetrieverStrategy,
+      topK?: number
+    ) => {
       if (!activeSession) return;
       const sessionId = activeSession.id;
       const turnId = `turn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const now = new Date().toISOString();
+      const effectiveStrategy = strategy ?? defaultStrategy;
 
       const pendingTurn: ResearchTurn = {
         id: turnId,
         query: "Voice audio recording submitted",
         kind: "voice",
         language,
-        strategy: defaultStrategy,
+        strategy: effectiveStrategy,
         createdAt: now,
         isLoading: true,
       };
@@ -326,12 +332,22 @@ export default function ResearchWorkspacePage() {
       setInspectedTurnId(turnId);
 
       try {
-        const res = await submitVoiceQuery(blob, undefined, language);
+        const res = await submitVoiceQuery(
+          blob,
+          undefined,
+          language,
+          effectiveStrategy,
+          topK
+        );
         updateTurnInSession(sessionId, turnId, {
           query: res.transcript || "Voice audio query",
           response: res,
           isLoading: false,
         });
+        if (autoOpenInspector && res.sources.length > 0) {
+          setInspectorTab("evidence");
+          setInspectorOpen(true);
+        }
       } catch (err) {
         updateTurnInSession(sessionId, turnId, {
           error:
@@ -342,7 +358,7 @@ export default function ResearchWorkspacePage() {
         });
       }
     },
-    [activeSession, defaultStrategy, updateTurnInSession]
+    [activeSession, autoOpenInspector, defaultStrategy, updateTurnInSession]
   );
 
   const sidebarSessions: SidebarSessionItem[] = useMemo(

@@ -20,11 +20,13 @@ from app.generation.generator import BaseLLMGenerator, create_generator_from_set
 from app.ingestion.chunker import chunk_text
 from app.ingestion.loaders import load_document_bytes
 from app.ingestion.store import DocumentRecord, DocumentStatus, DocumentStore
+from app.pipeline.interfaces import SpeechService
 from app.pipeline.orchestrator import PipelineOrchestrator, set_orchestrator
 from app.retrieval.dense import DenseRetriever
 from app.retrieval.hybrid import HybridRetriever
 from app.retrieval.lexical import LexicalRetriever
 from app.schemas.pipeline import ChunkStrategy
+from app.speech.provider import create_speech_service_from_settings
 
 logger = get_logger("pipeline.runtime")
 
@@ -55,6 +57,7 @@ class SamvadRuntime:
         metrics_store: Optional[MetricsStore] = None,
         generator: Optional[BaseLLMGenerator] = None,
         embedding_provider: Optional[EmbeddingProvider] = None,
+        speech_service: Optional[SpeechService] = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.metrics_store = metrics_store or get_metrics_store()
@@ -75,8 +78,12 @@ class SamvadRuntime:
         self.generator: Optional[BaseLLMGenerator] = (
             generator if generator is not None else create_generator_from_settings(self.settings)
         )
+        self.speech_service: Optional[SpeechService] = (
+            speech_service if speech_service is not None else create_speech_service_from_settings(self.settings)
+        )
 
         self.orchestrator = PipelineOrchestrator(
+            speech_service=self.speech_service,
             retrievers={
                 "hybrid": self.hybrid_retriever,
                 "dense": self.dense_retriever,
@@ -87,7 +94,13 @@ class SamvadRuntime:
             metrics_store=self.metrics_store,
             settings=self.settings,
         )
-        self._index_lock = asyncio.Lock()
+        self._index_lock: Optional[asyncio.Lock] = None
+
+    @property
+    def index_lock(self) -> asyncio.Lock:
+        if self._index_lock is None:
+            self._index_lock = asyncio.Lock()
+        return self._index_lock
 
         # Restore lexical index & persisted dense vectors if available on disk
         existing_chunks = self.document_store.get_all_chunks()
@@ -104,7 +117,7 @@ class SamvadRuntime:
 
     async def rebuild_indexes(self) -> int:
         """Re-index all stored chunks into both Lexical and Dense retrievers."""
-        async with self._index_lock:
+        async with self.index_lock:
             chunks = self.document_store.get_all_chunks()
             self.lexical_retriever.build_index(chunks)
             await self.dense_retriever.build_index(chunks)

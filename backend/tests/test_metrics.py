@@ -33,6 +33,9 @@ def test_metrics_store_empty_and_clear():
 
 @pytest.mark.asyncio
 async def test_analytics_endpoints_empty():
+    from app.analytics.metrics import get_metrics_store
+
+    get_metrics_store().clear()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         summary = await client.get("/api/v1/analytics/summary")

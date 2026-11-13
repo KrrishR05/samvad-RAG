@@ -74,15 +74,20 @@ def test_payload_too_large_error():
 async def test_query_endpoint_returns_not_implemented():
     """Query endpoint should return not_implemented when pipeline is not wired."""
     from app.main import app
+    from app.pipeline.orchestrator import PipelineOrchestrator, set_orchestrator
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.post(
-            "/api/v1/query",
-            json={"query": "What is SAMVAD?", "request_id": "custom-req-1"},
-        )
+    set_orchestrator(PipelineOrchestrator(retrievers={}))
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                "/api/v1/query",
+                json={"query": "What is SAMVAD?", "request_id": "custom-req-1"},
+            )
 
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "not_implemented"
-    assert data["request_id"] == "custom-req-1"
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "not_implemented"
+        assert data["request_id"] == "custom-req-1"
+    finally:
+        set_orchestrator(None)
