@@ -66,7 +66,12 @@ async def test_voice_upload_rejects_oversized_payload(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_voice_upload_accepts_valid_wav_and_returns_not_implemented():
+async def test_voice_upload_accepts_valid_wav_and_returns_not_implemented(monkeypatch):
+    from app.pipeline.runtime import get_runtime
+    runtime = get_runtime()
+    monkeypatch.setattr(runtime, "speech_service", None)
+    monkeypatch.setattr(runtime.orchestrator, "speech_service", None)
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(

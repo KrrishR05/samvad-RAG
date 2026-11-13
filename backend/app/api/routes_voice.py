@@ -8,15 +8,42 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, Request, Response, UploadFile
+from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.core.logging import current_request_id, sanitize_request_id
 from app.core.upload_validation import read_validated_audio_upload
 from app.pipeline.orchestrator import get_orchestrator
 from app.schemas.response import QueryResponse
+from app.speech.tts import SarvamTTSProvider
 
 router = APIRouter(prefix="/api/v1", tags=["voice"])
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000, description="Answer text to convert to speech")
+    language: Optional[str] = Field(default=None, description="Language code (e.g. hi, en, ta)")
+    speaker: Optional[str] = Field(default=None, description="Sarvam speaker name")
+
+
+@router.post(
+    "/voice/speak",
+    summary="Synthesize speech audio from text (TTS via Sarvam Bulbul v3)",
+)
+async def speak_text(payload: SpeakRequest) -> Response:
+    """Convert text into natural speech audio using Sarvam AI Bulbul v3."""
+    tts = SarvamTTSProvider()
+    audio_bytes = tts.synthesize(
+        text=payload.text,
+        language=payload.language,
+        speaker=payload.speaker,
+    )
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": "inline; filename=speech.mp3"},
+    )
 
 
 @router.post(

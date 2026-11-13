@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import type { QueryResponse, RetrieverStrategy } from "@/types/api";
-import { AlertIcon, CheckIcon, CopyIcon } from "@/components/ui/Icons";
+import { AlertIcon, CheckIcon, CopyIcon, SpeakerIcon } from "@/components/ui/Icons";
+import { synthesizeSpeech } from "@/lib/api/client";
+import { MarkdownAnswer } from "@/components/workspace/MarkdownAnswer";
 
 export interface ResearchTurn {
   id: string;
@@ -23,39 +25,6 @@ interface ResearchMessageProps {
   onInspectTurn: (turnId: string, tab?: "evidence" | "pipeline", sourceIdx?: number) => void;
 }
 
-/**
- * Splits assistant text on `[1]`, `[2]` markers into interactive citation pills
- * linked directly to real retrieved `sources[idx - 1]` entries.
- */
-function renderCitedText(
-  text: string,
-  totalSources: number,
-  onSelectCitation: (oneBasedIndex: number) => void
-) {
-  const parts = text.split(/(\[\d+\])/g);
-  return parts.map((part, idx) => {
-    const match = /^\[(\d+)\]$/.exec(part);
-    if (!match) {
-      return <React.Fragment key={idx}>{part}</React.Fragment>;
-    }
-    const citNum = parseInt(match[1], 10);
-    const valid = citNum >= 1 && citNum <= totalSources;
-    if (!valid) {
-      return <React.Fragment key={idx}>{part}</React.Fragment>;
-    }
-    return (
-      <button
-        key={idx}
-        type="button"
-        onClick={() => onSelectCitation(citNum)}
-        title={`Inspect source [${citNum}]`}
-        className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0 text-[11px] font-mono-tech font-medium rounded bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] hover:bg-[var(--accent)] hover:text-white transition-colors align-baseline cursor-pointer"
-      >
-        {citNum}
-      </button>
-    );
-  });
-}
 
 export function ResearchMessage({
   turn,
@@ -63,7 +32,38 @@ export function ResearchMessage({
   onInspectTurn,
 }: ResearchMessageProps) {
   const [copied, setCopied] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const resp = turn.response;
+
+  const handleSpeak = async () => {
+    if (isPlayingAudio && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlayingAudio(false);
+      return;
+    }
+    if (!resp?.answer) return;
+    try {
+      setIsAudioLoading(true);
+      const blob = await synthesizeSpeech(resp.answer, turn.language);
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setIsPlayingAudio(false);
+      audio.onerror = () => {
+        setIsPlayingAudio(false);
+        setIsAudioLoading(false);
+      };
+      setIsAudioLoading(false);
+      setIsPlayingAudio(true);
+      await audio.play();
+    } catch (err) {
+      console.error("TTS playback failed:", err);
+      setIsAudioLoading(false);
+      setIsPlayingAudio(false);
+    }
+  };
 
   const handleCopy = async () => {
     if (!resp?.answer) return;
@@ -188,15 +188,34 @@ export function ResearchMessage({
                   </span>
                 )}
                 {resp.answer && (
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-                    title="Copy answer"
-                  >
-                    {copied ? <CheckIcon /> : <CopyIcon />}
-                    <span>{copied ? "Copied" : "Copy"}</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSpeak}
+                      disabled={isAudioLoading}
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-mono-tech border transition-colors cursor-pointer ${
+                        isPlayingAudio
+                          ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent-border)] animate-pulse"
+                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border-transparent"
+                      }`}
+                      title={isPlayingAudio ? "Pause speech audio" : "Listen to answer via Sarvam Bulbul"}
+                    >
+                      <SpeakerIcon className="w-3.5 h-3.5" />
+                      <span>
+                        {isAudioLoading ? "Loading..." : isPlayingAudio ? "Playing..." : "Listen"}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                      title="Copy answer"
+                    >
+                      {copied ? <CheckIcon /> : <CopyIcon />}
+                      <span>{copied ? "Copied" : "Copy"}</span>
+                    </button>
+                  </>
                 )}
                 <button
                   type="button"
@@ -218,12 +237,16 @@ export function ResearchMessage({
               </div>
             )}
 
-            {/* Answer Prose */}
-            {resp.answer && (
-              <div className="text-[15px] leading-[1.7] text-[var(--text-primary)] whitespace-pre-wrap">
-                {renderCitedText(resp.answer, resp.sources.length, (citNum) =>
-                  onInspectTurn(turn.id, "evidence", citNum - 1)
-                )}
+            {/* Answer Prose with Markdown Formatting & Interactive Citations */}
+            {resp.answer && resp.answer !== resp.message && (
+              <div className="text-[15px] leading-[1.7] text-[var(--text-primary)]">
+                <MarkdownAnswer
+                  content={resp.answer}
+                  totalSources={resp.sources.length}
+                  onSelectCitation={(citNum) =>
+                    onInspectTurn(turn.id, "evidence", citNum - 1)
+                  }
+                />
               </div>
             )}
 

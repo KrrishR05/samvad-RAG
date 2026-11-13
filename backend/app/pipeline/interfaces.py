@@ -152,6 +152,7 @@ class AnswerGenerator(Protocol):
         query: str,
         context: Sequence[ScoredChunk],
         language: str | None = None,
+        intensity: str = "standard",
     ) -> GenerationResult:
         """Generate an answer grounded in the provided context. Raises GenerationError on failure."""
         ...

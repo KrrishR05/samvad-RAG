@@ -10,8 +10,9 @@ abstention / unconfigured reporting.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from app.analytics.metrics import MetricsStore, get_metrics_store
 from app.core.config import Settings, get_settings
@@ -29,8 +30,9 @@ from app.pipeline.interfaces import (
     SpeechService,
 )
 from app.pipeline.state import PipelineState
+from app.retrieval.context_builder import ContextOptimizer
 from app.schemas.analytics import LatencyRecord
-from app.schemas.pipeline import PipelineStage, StageResult, StageStatus
+from app.schemas.pipeline import ChunkMetadata, PipelineStage, StageResult, StageStatus
 from app.schemas.response import (
     Confidence,
     ConfidenceLevel,
@@ -41,6 +43,28 @@ from app.schemas.response import (
 )
 
 logger = get_logger("pipeline.orchestrator")
+
+SAMVAD_CANONICAL_CHUNK = ScoredChunk(
+    chunk_id="samvad-platform-core-overview",
+    text=(
+        "SAMVAD (संवाद) is an intelligent, voice-first, evidence-grounded multilingual Retrieval-Augmented Generation (RAG) platform. "
+        "Key capabilities and system architecture include:\n"
+        "• Multilingual Indic Voice: Native speech-to-text (STT via Sarvam AI Saaras v3) and high-quality text-to-speech (TTS via Sarvam AI Bulbul v3) across 10+ Indic languages including Hindi, Marathi, Bengali, Tamil, Telugu, Kannada, Malayalam, Gujarati, Punjabi, Odia, and English.\n"
+        "• Hybrid Retrieval: Combines dense vector semantic embeddings and sparse lexical Okapi BM25 keyword matching via Reciprocal Rank Fusion (RRF).\n"
+        "• Retrieval Intelligence: Deterministic Indic script identification, query intensity detection ('deep' vs 'standard') for exhaustive document synthesis, cross-encoder reranking, and Jaccard token context deduplication.\n"
+        "• Knowledge Base & Ingestion: Multi-format parsing (PDF, DOCX, TXT, Markdown) with SHA-256 chunk deduplication, provenance tracking, and persistent SQLite storage.\n"
+        "• Trust & Transparency: Strict citation enforcement ([1], [2]), honest abstention when evidence is absent from the indexed knowledge base, and full stage-by-stage pipeline latency telemetry."
+    ),
+    retrieval_score=1.0,
+    reranker_score=1.0,
+    retrieval_method="system",
+    metadata=ChunkMetadata(
+        chunk_id="samvad-platform-core-overview",
+        parent_document_id="samvad-system-manifest",
+        language="hi-en",
+        extra={"title": "SAMVAD Platform Specification & System Architecture"},
+    ),
+)
 
 
 def _score_to_level(score: Optional[float]) -> Optional[ConfidenceLevel]:
@@ -98,6 +122,7 @@ class PipelineOrchestrator:
         self.query_router = query_router
         self.metrics_store = metrics_store or get_metrics_store()
         self.settings = settings
+        self.context_optimizer = ContextOptimizer()
 
     # ------------------------------------------------------------------
     # Public entry points
@@ -291,11 +316,25 @@ class PipelineOrchestrator:
                 processed_text=cleaned_query,
                 language=language,
             )
-        qa_stage = ps.complete_stage(output={"language": analyzed.language})
+        intensity = analyzed.metadata.get("intensity", "standard")
+        about_samvad = analyzed.metadata.get("about_samvad", False)
+        qa_stage = ps.complete_stage(
+            output={
+                "language": analyzed.language,
+                "intensity": intensity,
+                "about_samvad": about_samvad,
+            }
+        )
 
         # 3. Retrieval
         ps.begin_stage(PipelineStage.RETRIEVING)
-        retrieval_k = top_k or cfg.retrieval_top_k
+        if top_k is not None:
+            retrieval_k = top_k
+        elif intensity == "deep":
+            retrieval_k = max(cfg.retrieval_top_k * 2, 16)
+        else:
+            retrieval_k = cfg.retrieval_top_k
+
         raw_chunks = list(
             await asyncio.wait_for(
                 active_retriever.retrieve(
@@ -306,13 +345,22 @@ class PipelineOrchestrator:
                 timeout=stage_timeout,
             )
         )
+        if about_samvad:
+            raw_chunks.insert(0, SAMVAD_CANONICAL_CHUNK)
+
         ret_stage = ps.complete_stage(
             output={"strategy": chosen_key, "retrieved_count": len(raw_chunks)}
         )
 
         # 4. Optional Reranking
         rerank_stage: Optional[StageResult] = None
-        context_limit = top_k or cfg.rerank_top_k
+        if top_k is not None:
+            context_limit = top_k
+        elif intensity == "deep":
+            context_limit = max(cfg.rerank_top_k * 2, 8)
+        else:
+            context_limit = cfg.rerank_top_k
+
         if self.reranker is not None and raw_chunks:
             ps.begin_stage(PipelineStage.RERANKING)
             ranked_chunks = list(
@@ -328,6 +376,9 @@ class PipelineOrchestrator:
             rerank_stage = ps.complete_stage(output={"reranked_count": len(ranked_chunks)})
         else:
             ranked_chunks = raw_chunks[:context_limit]
+
+        # Context optimization & deduplication (Phase 3 — M3.3)
+        ranked_chunks = self.context_optimizer.optimize(ranked_chunks, max_chunks=context_limit)
 
         # 5. Confidence Check
         ps.begin_stage(PipelineStage.CONFIDENCE_CHECK)
@@ -404,11 +455,19 @@ class PipelineOrchestrator:
 
         # 6. Answer Generation
         ps.begin_stage(PipelineStage.GENERATING)
+        gen_kwargs: dict[str, Any] = {"language": analyzed.language}
+        try:
+            sig = inspect.signature(self.generator.generate)
+            if "intensity" in sig.parameters:
+                gen_kwargs["intensity"] = intensity
+        except Exception:
+            pass
+
         gen_result = await asyncio.wait_for(
             self.generator.generate(
                 cleaned_query,
                 ranked_chunks,
-                language=analyzed.language,
+                **gen_kwargs,
             ),
             timeout=stage_timeout,
         )
@@ -416,6 +475,7 @@ class PipelineOrchestrator:
             output={
                 "model": getattr(self.generator, "model_name", None),
                 "cited_count": len(gen_result.sources_used),
+                "intensity": intensity,
             }
         )
 
@@ -525,14 +585,19 @@ class PipelineOrchestrator:
         cited_set = set(cited_ids)
         sources: list[Source] = []
         for idx, chunk in enumerate(chunks, start=1):
-            meta = chunk.metadata.model_dump(mode="json")
+            if chunk.metadata is not None:
+                meta = chunk.metadata.model_dump(mode="json")
+                passage_id = chunk.metadata.parent_document_id or chunk.chunk_id
+            else:
+                meta = {}
+                passage_id = chunk.chunk_id
             meta["citation_index"] = idx
             meta["is_cited"] = chunk.chunk_id in cited_set
             meta["retrieval_method"] = chunk.retrieval_method
             sources.append(
                 Source(
                     source_id=chunk.chunk_id,
-                    passage_id=chunk.metadata.parent_document_id or chunk.chunk_id,
+                    passage_id=passage_id,
                     text=chunk.text,
                     metadata=meta,
                     retrieval_score=chunk.retrieval_score,

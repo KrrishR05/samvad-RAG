@@ -37,6 +37,7 @@ env/
 backend/data/
 backend/benchmarks/results/*.json
 backend/benchmarks/results/*.csv
+*.mp3
 
 # ─── Logs ───
 *.log

@@ -137,6 +137,14 @@ class Settings(BaseSettings):
         ge=1,
         description="Number of candidates after reranking",
     )
+    reranker_provider: str = Field(
+        default="lexical",
+        description="Reranker strategy: 'lexical', 'gemini', or 'none'",
+    )
+    enable_query_analysis: bool = Field(
+        default=True,
+        description="Enable Indic/multilingual query analysis and intent detection",
+    )
 
     # --- Pipeline ---
     pipeline_timeout_seconds: float = Field(

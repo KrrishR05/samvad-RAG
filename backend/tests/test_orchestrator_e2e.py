@@ -159,3 +159,22 @@ async def test_orchestrator_pipeline_timeout():
     )
     with pytest.raises(PipelineTimeoutError):
         await orch.run_text_query("trigger timeout")
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_handles_samvad_self_identity_query():
+    from app.retrieval.query_analyzer import IndicQueryAnalyzer
+    lexical = LexicalRetriever([])  # Empty index!
+    orch = PipelineOrchestrator(
+        retrievers={"lexical": lexical},
+        default_retriever_key="lexical",
+        query_analyzer=IndicQueryAnalyzer(),
+        generator=_StubGenerator(),
+        metrics_store=MetricsStore(),
+    )
+    res = await orch.run_text_query("What is SAMVAD and what are its capabilities?")
+    assert res.status == QueryStatus.COMPLETED
+    assert res.grounded is True
+    assert len(res.sources) == 1
+    assert res.sources[0].source_id == "samvad-platform-core-overview"
+    assert "samvad-platform-core-overview" in res.answer

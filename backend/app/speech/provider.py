@@ -120,26 +120,75 @@ class GeminiSpeechProvider:
 
 
 class SarvamSpeechProvider:
-    """Sarvam AI speech-to-text provider (Phase 4)."""
+    """Sarvam AI speech-to-text provider using saaras:v3."""
 
     provider_name = "sarvam"
 
-    def __init__(self, api_key: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_name: str = "saaras:v3",
+        timeout_seconds: float = 20.0,
+    ) -> None:
         self.api_key = api_key
         if not self.api_key:
             raise ConfigurationError(
                 "SARVAM_API_KEY is required for the Sarvam STT provider."
             )
+        self.model_name = model_name
+        self.timeout_seconds = timeout_seconds
 
     async def transcribe(
         self,
         audio_data: bytes,
         language: Optional[str] = None,
     ) -> TranscriptionResult:
-        raise SpeechProcessingError("Sarvam STT provider is not yet implemented.")
+        if not audio_data:
+            raise SpeechProcessingError("Empty audio data received.")
+
+        # Map ISO language code (e.g. 'hi') to Sarvam format ('hi-IN')
+        lang_code = "unknown"
+        if language:
+            clean_lang = language.strip().lower()
+            lang_map = {
+                "hi": "hi-IN",
+                "bn": "bn-IN",
+                "ta": "ta-IN",
+                "te": "te-IN",
+                "kn": "kn-IN",
+                "ml": "ml-IN",
+                "mr": "mr-IN",
+                "gu": "gu-IN",
+                "pa": "pa-IN",
+                "od": "od-IN",
+                "en": "en-IN",
+            }
+            lang_code = lang_map.get(
+                clean_lang, clean_lang if "-IN" in clean_lang else "unknown"
+            )
+
+        try:
+            from sarvamai import SarvamAI
+
+            client = SarvamAI(api_subscription_key=self.api_key)
+            resp = client.speech_to_text.transcribe(
+                file=audio_data,
+                model=self.model_name,
+                language_code=lang_code,
+            )
+            transcript = (getattr(resp, "transcript", "") or "").strip()
+            detected_lang = getattr(resp, "language_code", language)
+            return TranscriptionResult(
+                text=transcript,
+                language=detected_lang,
+                confidence=0.95,
+                provider=self.provider_name,
+            )
+        except Exception as exc:
+            raise SpeechProcessingError(f"Sarvam STT failed: {exc}") from exc
 
     async def health_check(self) -> bool:
-        return False
+        return bool(self.api_key)
 
 
 class ElevenLabsSpeechProvider:

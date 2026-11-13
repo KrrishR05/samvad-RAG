@@ -20,11 +20,13 @@ from app.generation.generator import BaseLLMGenerator, create_generator_from_set
 from app.ingestion.chunker import chunk_text
 from app.ingestion.loaders import load_document_bytes
 from app.ingestion.store import DocumentRecord, DocumentStatus, DocumentStore
-from app.pipeline.interfaces import SpeechService
+from app.pipeline.interfaces import QueryAnalyzer, Reranker, SpeechService
 from app.pipeline.orchestrator import PipelineOrchestrator, set_orchestrator
 from app.retrieval.dense import DenseRetriever
 from app.retrieval.hybrid import HybridRetriever
 from app.retrieval.lexical import LexicalRetriever
+from app.retrieval.query_analyzer import IndicQueryAnalyzer
+from app.retrieval.reranker import create_reranker_from_settings
 from app.schemas.pipeline import ChunkStrategy
 from app.speech.provider import create_speech_service_from_settings
 
@@ -58,6 +60,8 @@ class SamvadRuntime:
         generator: Optional[BaseLLMGenerator] = None,
         embedding_provider: Optional[EmbeddingProvider] = None,
         speech_service: Optional[SpeechService] = None,
+        reranker: Optional[Reranker] = None,
+        query_analyzer: Optional[QueryAnalyzer] = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.metrics_store = metrics_store or get_metrics_store()
@@ -81,9 +85,21 @@ class SamvadRuntime:
         self.speech_service: Optional[SpeechService] = (
             speech_service if speech_service is not None else create_speech_service_from_settings(self.settings)
         )
+        self.query_analyzer: Optional[QueryAnalyzer] = (
+            query_analyzer
+            if query_analyzer is not None
+            else (IndicQueryAnalyzer() if self.settings.enable_query_analysis else None)
+        )
+        self.reranker: Optional[Reranker] = (
+            reranker
+            if reranker is not None
+            else create_reranker_from_settings(self.settings)
+        )
 
         self.orchestrator = PipelineOrchestrator(
             speech_service=self.speech_service,
+            query_analyzer=self.query_analyzer,
+            reranker=self.reranker,
             retrievers={
                 "hybrid": self.hybrid_retriever,
                 "dense": self.dense_retriever,

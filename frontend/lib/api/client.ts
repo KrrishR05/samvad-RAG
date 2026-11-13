@@ -101,6 +101,28 @@ export async function submitVoiceQuery(
   return res.json() as Promise<QueryResponse>;
 }
 
+export async function synthesizeSpeech(
+  text: string,
+  language?: string
+): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/api/v1/voice/speak`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, language }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiClientError(
+      body?.error?.message || `TTS failed: ${res.status}`,
+      res.status,
+      body?.error?.code
+    );
+  }
+
+  return res.blob();
+}
+
 // ─── Document Management Endpoints ───
 
 export async function listDocuments(): Promise<DocumentListResponse> {
