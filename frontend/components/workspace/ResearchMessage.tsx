@@ -78,20 +78,20 @@ export function ResearchMessage({
 
   return (
     <article
-      className={`rounded-xl border transition-all duration-200 ${
+      className={`rounded-xl border transition-colors ${
         isInspected
-          ? "samvad-message-card-active border-[var(--accent-border)] shadow-[0_0_28px_rgba(167,139,250,0.12)]"
-          : "samvad-message-card border-[var(--brand-forest-border)] hover:border-[var(--border-default)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.25)]"
+          ? "border-[var(--border-strong)] bg-[var(--bg-panel)]"
+          : "border-[var(--border-subtle)] bg-[var(--bg-panel)]/70"
       }`}
     >
       {/* Query Strip */}
-      <div className="px-5 py-3.5 border-b border-[var(--brand-forest-border)] flex items-start justify-between gap-4 samvad-query-accent">
+      <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
               {turn.kind === "voice" ? "Voice Query" : "Query"}
             </span>
-            <span className="text-[10px] font-mono-tech px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)]/50">
+            <span className="text-[10px] font-mono-tech px-1.5 py-0.5 rounded bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
               {turn.strategy}
             </span>
             {turn.language && (

@@ -151,92 +151,6 @@ html[data-theme="light"] body {
   background: var(--border-strong);
 }
 
-/* ============================================================
- *  SAMVAD Workspace Backgrounds
- * ============================================================ */
-
-/* Full canvas background used on the main scrollable chat area */
-.samvad-workspace-bg {
-  background:
-    radial-gradient(ellipse 55% 45% at 75% 8%,  rgba(167,139,250,0.09) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 55% at 8%  92%,  rgba(18, 60, 50, 0.35)  0%, transparent 55%),
-    radial-gradient(ellipse 38% 38% at 92% 85%,  rgba(45,212,191,0.06)   0%, transparent 50%),
-    radial-gradient(ellipse 60% 60% at 50% 50%,  rgba(18, 60, 50, 0.08)  0%, transparent 70%),
-    linear-gradient(170deg, #0C1412 0%, #101C19 45%, #0C1412 100%);
-  background-attachment: local;
-}
-
-/* Message card — forest-green tinted surface with glass depth */
-.samvad-message-card {
-  background: linear-gradient(
-    140deg,
-    rgba(21, 39, 35, 0.92) 0%,
-    rgba(16, 28, 25, 0.96) 100%
-  );
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-/* Inspected/active card — adds a lavender atmospheric tint */
-.samvad-message-card-active {
-  background: linear-gradient(
-    140deg,
-    rgba(31, 24, 48, 0.72) 0%,
-    rgba(21, 39, 35, 0.95) 60%,
-    rgba(16, 28, 25, 0.98) 100%
-  );
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-/* Welcome / empty-state area: subtle ambient depth */
-.samvad-welcome-bg {
-  background:
-    radial-gradient(ellipse 70% 60% at 50% 0%,  rgba(167,139,250,0.07) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 50% at 20% 100%, rgba(18,60,50,0.25)    0%, transparent 60%);
-}
-
-/* Top header bar: glassy forest-green tint */
-.samvad-header-bar {
-  background: linear-gradient(
-    90deg,
-    rgba(12, 20, 18, 0.95) 0%,
-    rgba(14, 22, 20, 0.92) 100%
-  );
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  border-bottom: 1px solid rgba(35, 78, 66, 0.6);
-}
-
-/* Starter prompt card hover glow */
-.samvad-prompt-card {
-  background: linear-gradient(
-    135deg,
-    rgba(16, 28, 25, 0.9) 0%,
-    rgba(14, 24, 21, 0.95) 100%
-  );
-  border: 1px solid var(--border-subtle);
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-}
-.samvad-prompt-card:hover {
-  border-color: var(--accent-border);
-  box-shadow: 0 0 18px rgba(167,139,250,0.10), 0 2px 8px rgba(0,0,0,0.3);
-  background: linear-gradient(
-    135deg,
-    rgba(21, 39, 35, 0.95) 0%,
-    rgba(28, 20, 44, 0.60) 100%
-  );
-}
-
-/* Lavender left-border accent for query strip */
-.samvad-query-accent {
-  border-left: 2px solid var(--accent);
-}
-
-/* ============================================================
- *  Keyframes
- * ============================================================ */
-
 /* Subtle voice recording ring */
 @keyframes pulse-ring {
   0% {
@@ -251,21 +165,4 @@ html[data-theme="light"] body {
 
 .animate-pulse-ring {
   animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-}
-
-/* Shimmer for loading skeletons */
-@keyframes samvad-shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
-}
-
-.samvad-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(21,39,35,0.6) 25%,
-    rgba(45,212,191,0.07) 50%,
-    rgba(21,39,35,0.6) 75%
-  );
-  background-size: 200% 100%;
-  animation: samvad-shimmer 2s linear infinite;
 }

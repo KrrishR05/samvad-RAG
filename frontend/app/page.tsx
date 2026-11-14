@@ -414,10 +414,10 @@ export default function ResearchWorkspacePage() {
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <div className="max-w-3xl mx-auto">
             {!activeSession || activeSession.turns.length === 0 ? (
-              <div className="py-10 sm:py-16 space-y-8 samvad-welcome-bg rounded-2xl">
+              <div className="py-10 sm:py-16 space-y-8">
                 {/* Editorial Welcome Header */}
                 <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[var(--bg-panel)] border border-[var(--accent-border)]/40 text-[11px] font-mono-tech text-[var(--text-secondary)] shadow-xs" style={{boxShadow: '0 0 20px rgba(167,139,250,0.08)'}}>
+                  <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[11px] font-mono-tech text-[var(--text-secondary)] shadow-xs">
                     <SamvadLogo className="w-4 h-4 shrink-0" />
                     <span>SAMVAD <span className="text-[var(--accent)] font-semibold">| संवाद</span> &mdash; Intelligence Through Evidence</span>
                   </div>
@@ -433,7 +433,7 @@ export default function ResearchWorkspacePage() {
                 {pipelineStatus &&
                   (!pipelineStatus.retrieval_ready ||
                     !pipelineStatus.llm_configured) && (
-                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)]/80 backdrop-blur-sm p-4 space-y-3">
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] p-4 space-y-3">
                       <p className="text-xs font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
                         Workspace Readiness
                       </p>
@@ -490,7 +490,7 @@ export default function ResearchWorkspacePage() {
                         key={prompt}
                         type="button"
                         onClick={() => setComposerQuery(prompt)}
-                        className="samvad-prompt-card text-left px-4 py-3 rounded-lg text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                        className="text-left px-4 py-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] hover:bg-[var(--bg-surface)] hover:border-[var(--border-default)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                       >
                         {prompt}
                       </button>

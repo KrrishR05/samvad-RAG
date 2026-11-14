@@ -324,7 +324,7 @@ export function AppShell({
   );
 
   return (
-    <div className="h-screen w-full flex overflow-hidden text-[var(--text-primary)]">
+    <div className="h-screen w-full flex overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)]">
       {/* Desktop Sidebar */}
       {sidebarOpen && (
         <aside className="hidden md:block w-[260px] shrink-0 h-full">
@@ -344,9 +344,9 @@ export function AppShell({
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col h-full samvad-workspace-bg">
+      <div className="flex-1 min-w-0 flex flex-col h-full">
         {/* Top Utility Strip */}
-        <header className="h-14 shrink-0 px-4 samvad-header-bar flex items-center justify-between gap-3">
+        <header className="h-14 shrink-0 px-4 border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]/90 backdrop-blur-sm flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"

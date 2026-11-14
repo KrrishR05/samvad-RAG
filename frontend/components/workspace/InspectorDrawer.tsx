@@ -61,21 +61,17 @@ export function InspectorDrawer({
   return (
     <aside
       aria-label="Evidence and Pipeline Inspector"
-      className="w-full sm:w-[390px] shrink-0 h-full border-l border-[var(--brand-forest-border)] flex flex-col"
-      style={{
-        background: 'linear-gradient(180deg, rgba(14,22,20,0.97) 0%, rgba(12,20,18,0.99) 100%)',
-        backdropFilter: 'blur(8px)',
-      }}
+      className="w-full sm:w-[390px] shrink-0 h-full border-l border-[var(--border-subtle)] bg-[var(--bg-panel)] flex flex-col"
     >
       {/* Header + Tabs */}
-      <div className="h-14 shrink-0 px-4 border-b border-[var(--brand-forest-border)] flex items-center justify-between gap-2">
+      <div className="h-14 shrink-0 px-4 border-b border-[var(--border-subtle)] flex items-center justify-between gap-2">
         <div className="inline-flex rounded-md bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-0.5">
           <button
             type="button"
             onClick={() => onTabChange("evidence")}
             className={`px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
               activeTab === "evidence"
-                ? "bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)]/50 shadow-sm"
+                ? "bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-sm"
                 : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
           >
@@ -86,7 +82,7 @@ export function InspectorDrawer({
             onClick={() => onTabChange("pipeline")}
             className={`px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
               activeTab === "pipeline"
-                ? "bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)]/50 shadow-sm"
+                ? "bg-[var(--bg-panel)] text-[var(--text-primary)] shadow-sm"
                 : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
           >
