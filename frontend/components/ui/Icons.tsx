@@ -5,36 +5,29 @@ interface IconProps {
 }
 
 /**
- * Custom SAMVAD emblem: Layered retrieval planes converging on a grounded node.
- * Crisp geometric stroke mark with zero gradient clutter.
+ * Official SAMVAD emblem: Stylized 3D geometric ribbon loop in gradient violet/cyan.
  */
 export function SamvadLogo({ className = "w-6 h-6" }: IconProps) {
   return (
-    <svg
-      viewBox="0 0 28 28"
-      fill="none"
-      className={className}
+    <img
+      src="/samvad-icon.png"
+      alt="SAMVAD Logo"
+      className={`${className} object-contain inline-block select-none`}
       aria-hidden="true"
-    >
-      <rect
-        x="2"
-        y="2"
-        width="24"
-        height="24"
-        rx="6"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        className="text-[var(--border-strong)]"
-      />
-      <path
-        d="M8.5 10.5H19.5M8.5 14H16.5M8.5 17.5H13.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        className="text-[var(--text-primary)]"
-      />
-      <circle cx="19" cy="17.5" r="2.25" fill="var(--accent)" />
-    </svg>
+    />
+  );
+}
+
+/**
+ * Official SAMVAD full banner logo with wordmark and Indic script.
+ */
+export function SamvadBrandLogo({ className = "h-7 w-auto" }: IconProps) {
+  return (
+    <img
+      src="/samvad-logo.png"
+      alt="SAMVAD | संवाद — Intelligence Through Evidence"
+      className={`${className} object-contain inline-block select-none`}
+    />
   );
 }
 

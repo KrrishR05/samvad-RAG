@@ -178,7 +178,7 @@ function renderInline(
                   type="button"
                   onClick={() => onSelectCitation(citNum)}
                   title={`Inspect source [${citNum}]`}
-                  className="inline-flex items-center justify-center px-1.5 py-0 text-[11px] font-mono-tech font-semibold rounded bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] hover:bg-[var(--accent)] hover:text-white transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="inline-flex items-center justify-center px-1.5 py-0 text-[11px] font-mono-tech font-semibold rounded bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] hover:bg-[var(--accent)] hover:text-[#0C1412] hover:font-bold transition-all cursor-pointer shadow-xs active:scale-95"
                 >
                   {citNum}
                 </button>

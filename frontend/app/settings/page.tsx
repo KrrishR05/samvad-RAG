@@ -116,7 +116,7 @@ export default function SettingsPage() {
                     onClick={() => setTheme(mode)}
                     className={`px-3 py-1 rounded text-xs font-medium capitalize transition-colors cursor-pointer ${
                       theme === mode
-                        ? "bg-[var(--accent)] text-white"
+                        ? "bg-[var(--accent)] text-[#0C1412] font-semibold shadow-xs"
                         : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }`}
                   >
