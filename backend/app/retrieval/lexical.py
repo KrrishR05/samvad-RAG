@@ -136,13 +136,19 @@ class LexicalRetriever:
         results: list[ScoredChunk] = []
         for score, idx in scored[:top_k]:
             chunk = self._chunks[idx]
+            chunk_id = (
+                chunk.metadata.chunk_id
+                if getattr(chunk, "metadata", None) and hasattr(chunk.metadata, "chunk_id")
+                else getattr(chunk, "chunk_id", f"chunk-{idx}")
+            )
+            chunk_meta = getattr(chunk, "metadata", None)
             results.append(
                 ScoredChunk(
-                    chunk_id=chunk.metadata.chunk_id,
+                    chunk_id=chunk_id,
                     text=chunk.text,
                     retrieval_score=round(score, 6),
                     retrieval_method=self.strategy_name,
-                    metadata=chunk.metadata,
+                    metadata=chunk_meta,
                 )
             )
         return results

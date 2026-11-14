@@ -12,7 +12,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import time
-from typing import Any, Optional, Sequence
+from typing import Any, AsyncGenerator, Callable, Optional, Sequence
+
+from app.speech.normalizer import SpeechNormalizer
 
 from app.analytics.metrics import MetricsStore, get_metrics_store
 from app.core.config import Settings, get_settings
@@ -101,10 +103,12 @@ class PipelineOrchestrator:
         confidence_guard: Optional[GuardrailService] = None,
         grounding_guard: Optional[GuardrailService] = None,
         query_router: Optional[QueryRouter] = None,
+        speech_normalizer: Optional[SpeechNormalizer] = None,
         metrics_store: Optional[MetricsStore] = None,
         settings: Optional[Settings] = None,
     ) -> None:
         self.speech_service = speech_service
+        self.speech_normalizer = speech_normalizer or SpeechNormalizer()
         self.query_analyzer = query_analyzer
 
         self.retrievers: dict[str, Retriever] = dict(retrievers) if retrievers else {}
@@ -181,9 +185,14 @@ class PipelineOrchestrator:
                 stages=ps.results,
             )
 
-        # 3. Proceed through query validation and text pipeline
+        # 3. Speech-Aware Normalization (Phase 5 — M5.2)
+        cleaned_transcript = self.speech_normalizer.normalize(
+            transcript, language=transcription.language or language
+        )
+
+        # 4. Proceed through query validation and text pipeline
         text_response = await self.run_text_query(
-            query=transcript,
+            query=cleaned_transcript,
             request_id=rid,
             language=transcription.language or language,
             retriever_strategy=retriever_strategy,
@@ -248,6 +257,53 @@ class PipelineOrchestrator:
                 request_id=rid,
             ) from exc
 
+    async def stream_text_query(
+        self,
+        query: str,
+        request_id: Optional[str] = None,
+        language: Optional[str] = None,
+        retriever_strategy: Optional[str] = None,
+        top_k: Optional[int] = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Execute text RAG pipeline yielding real-time SSE progress events (Phase 5 — M5.3)."""
+        rid = sanitize_request_id(request_id)
+        if not self.retrievers:
+            yield {"event": "error", "message": "No retrievers configured."}
+            return
+
+        cfg = self.settings or get_settings()
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+
+        async def _callback(evt: dict[str, Any]) -> None:
+            await queue.put(evt)
+
+        async def _runner() -> None:
+            try:
+                resp = await self._execute_text_pipeline(
+                    query=query,
+                    rid=rid,
+                    language=language,
+                    retriever_strategy=retriever_strategy,
+                    top_k=top_k,
+                    cfg=cfg,
+                    on_event=_callback,
+                )
+                await queue.put({"event": "complete", "response": resp.model_dump(mode="json")})
+            except Exception as exc:
+                await queue.put({"event": "error", "message": str(exc)})
+            finally:
+                await queue.put({"event": "_stream_done_"})
+
+        task = asyncio.create_task(_runner())
+        try:
+            while True:
+                item = await queue.get()
+                if item.get("event") == "_stream_done_":
+                    break
+                yield item
+        finally:
+            await task
+
     async def _execute_text_pipeline(
         self,
         *,
@@ -257,10 +313,42 @@ class PipelineOrchestrator:
         retriever_strategy: Optional[str],
         top_k: Optional[int],
         cfg: Settings,
+        on_event: Optional[Callable[[dict[str, Any]], Any]] = None,
     ) -> QueryResponse:
         t0 = time.perf_counter()
         ps = PipelineState(request_id=rid)
         stage_timeout = cfg.stage_timeout_seconds
+
+        async def _begin_stage(st: PipelineStage) -> None:
+            ps.begin_stage(st)
+            if on_event:
+                try:
+                    res = on_event({"event": "stage_start", "stage": st.value})
+                    if inspect.isawaitable(res):
+                        await res
+                except Exception:
+                    pass
+
+        async def _complete_stage(
+            output: Optional[dict[str, Any]] = None,
+            error: Optional[str] = None,
+        ) -> StageResult:
+            sr = ps.complete_stage(output=output, error=error)
+            if on_event:
+                try:
+                    res = on_event({
+                        "event": "stage_complete",
+                        "stage": sr.stage.value,
+                        "status": sr.status.value,
+                        "duration_ms": sr.duration_ms,
+                        "output": sr.output,
+                        "error": sr.error,
+                    })
+                    if inspect.isawaitable(res):
+                        await res
+                except Exception:
+                    pass
+            return sr
 
         # Select retriever strategy
         chosen_key = (retriever_strategy or self.default_retriever_key).strip().lower()
@@ -275,10 +363,10 @@ class PipelineOrchestrator:
             chosen_key, active_retriever = next(iter(self.retrievers.items()))
 
         # 1. Validating
-        ps.begin_stage(PipelineStage.VALIDATING)
+        await _begin_stage(PipelineStage.VALIDATING)
         cleaned_query = query.strip()
         if not cleaned_query:
-            ps.complete_stage(error="Query text cannot be blank.")
+            await _complete_stage(error="Query text cannot be blank.")
             ps.transition_to(PipelineStage.ERROR)
             raise InputValidationError("Query text cannot be blank.")
 
@@ -288,7 +376,7 @@ class PipelineOrchestrator:
                 timeout=stage_timeout,
             )
             if not guard_res.passed:
-                ps.complete_stage(output={"guardrail_passed": False, "reason": guard_res.reason})
+                await _complete_stage(output={"guardrail_passed": False, "reason": guard_res.reason})
                 ps.transition_to(PipelineStage.ABSTAINED)
                 total_ms = round((time.perf_counter() - t0) * 1000.0, 2)
                 return QueryResponse(
@@ -299,10 +387,10 @@ class PipelineOrchestrator:
                     stages=ps.results,
                     retrieval_method=chosen_key,
                 )
-        ps.complete_stage(output={"query_length": len(cleaned_query)})
+        await _complete_stage(output={"query_length": len(cleaned_query)})
 
         # 2. Query Analysis
-        ps.begin_stage(PipelineStage.QUERY_ANALYSIS)
+        await _begin_stage(PipelineStage.QUERY_ANALYSIS)
         if self.query_analyzer is not None:
             analyzed = await asyncio.wait_for(
                 self.query_analyzer.analyze(cleaned_query),
@@ -318,7 +406,7 @@ class PipelineOrchestrator:
             )
         intensity = analyzed.metadata.get("intensity", "standard")
         about_samvad = analyzed.metadata.get("about_samvad", False)
-        qa_stage = ps.complete_stage(
+        qa_stage = await _complete_stage(
             output={
                 "language": analyzed.language,
                 "intensity": intensity,
@@ -327,7 +415,7 @@ class PipelineOrchestrator:
         )
 
         # 3. Retrieval
-        ps.begin_stage(PipelineStage.RETRIEVING)
+        await _begin_stage(PipelineStage.RETRIEVING)
         if top_k is not None:
             retrieval_k = top_k
         elif intensity == "deep":
@@ -348,7 +436,7 @@ class PipelineOrchestrator:
         if about_samvad:
             raw_chunks.insert(0, SAMVAD_CANONICAL_CHUNK)
 
-        ret_stage = ps.complete_stage(
+        ret_stage = await _complete_stage(
             output={"strategy": chosen_key, "retrieved_count": len(raw_chunks)}
         )
 
@@ -362,7 +450,7 @@ class PipelineOrchestrator:
             context_limit = cfg.rerank_top_k
 
         if self.reranker is not None and raw_chunks:
-            ps.begin_stage(PipelineStage.RERANKING)
+            await _begin_stage(PipelineStage.RERANKING)
             ranked_chunks = list(
                 await asyncio.wait_for(
                     self.reranker.rerank(
@@ -373,7 +461,7 @@ class PipelineOrchestrator:
                     timeout=stage_timeout,
                 )
             )
-            rerank_stage = ps.complete_stage(output={"reranked_count": len(ranked_chunks)})
+            rerank_stage = await _complete_stage(output={"reranked_count": len(ranked_chunks)})
         else:
             ranked_chunks = raw_chunks[:context_limit]
 
@@ -381,14 +469,14 @@ class PipelineOrchestrator:
         ranked_chunks = self.context_optimizer.optimize(ranked_chunks, max_chunks=context_limit)
 
         # 5. Relevance & Confidence Check
-        ps.begin_stage(PipelineStage.CONFIDENCE_CHECK)
+        await _begin_stage(PipelineStage.CONFIDENCE_CHECK)
         if self.relevance_guard is not None and ranked_chunks and not about_samvad:
             rel_res = await asyncio.wait_for(
                 self.relevance_guard.check(query=cleaned_query, context=ranked_chunks),
                 timeout=stage_timeout,
             )
             if not rel_res.passed:
-                ps.complete_stage(output={"passed": False, "reason": rel_res.reason, "check": "relevance"})
+                await _complete_stage(output={"passed": False, "reason": rel_res.reason, "check": "relevance"})
                 ps.transition_to(PipelineStage.ABSTAINED)
                 return self._build_abstained_response(
                     rid=rid,
@@ -408,7 +496,7 @@ class PipelineOrchestrator:
                 timeout=stage_timeout,
             )
             if not conf_res.passed:
-                ps.complete_stage(output={"passed": False, "reason": conf_res.reason, "check": "confidence"})
+                await _complete_stage(output={"passed": False, "reason": conf_res.reason, "check": "confidence"})
                 ps.transition_to(PipelineStage.ABSTAINED)
                 return self._build_abstained_response(
                     rid=rid,
@@ -421,7 +509,7 @@ class PipelineOrchestrator:
                     rerank_ms=rerank_stage.duration_ms if rerank_stage else None,
                     stages=ps.results,
                 )
-        ps.complete_stage(output={"context_chunks": len(ranked_chunks)})
+        await _complete_stage(output={"context_chunks": len(ranked_chunks)})
 
         # Check generator configuration honestly before attempting generation
         if self.generator is None:
@@ -474,7 +562,7 @@ class PipelineOrchestrator:
             )
 
         # 6. Answer Generation
-        ps.begin_stage(PipelineStage.GENERATING)
+        await _begin_stage(PipelineStage.GENERATING)
         gen_kwargs: dict[str, Any] = {"language": analyzed.language}
         try:
             sig = inspect.signature(self.generator.generate)
@@ -491,7 +579,7 @@ class PipelineOrchestrator:
             ),
             timeout=stage_timeout,
         )
-        gen_stage = ps.complete_stage(
+        gen_stage = await _complete_stage(
             output={
                 "model": getattr(self.generator, "model_name", None),
                 "cited_count": len(gen_result.sources_used),
@@ -500,7 +588,7 @@ class PipelineOrchestrator:
         )
 
         # 7. Grounding Check
-        ps.begin_stage(PipelineStage.GROUNDING_CHECK)
+        await _begin_stage(PipelineStage.GROUNDING_CHECK)
         guardrail_ms: Optional[float] = None
         grounded = gen_result.grounded
         if self.grounding_guard is not None:
@@ -513,10 +601,10 @@ class PipelineOrchestrator:
                 timeout=stage_timeout,
             )
             grounded = g_res.passed
-            guard_stage = ps.complete_stage(output={"passed": g_res.passed, "reason": g_res.reason})
+            guard_stage = await _complete_stage(output={"passed": g_res.passed, "reason": g_res.reason})
             guardrail_ms = guard_stage.duration_ms
         else:
-            ps.complete_stage(output={"citation_linked": grounded})
+            await _complete_stage(output={"citation_linked": grounded})
 
         ps.transition_to(PipelineStage.COMPLETE)
 
