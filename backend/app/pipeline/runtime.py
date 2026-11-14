@@ -17,6 +17,12 @@ from app.core.logging import get_logger
 from app.embeddings.interfaces import EmbeddingProvider
 from app.embeddings.providers import LocalTfidfSVDProvider, OpenAICompatibleEmbeddingProvider
 from app.generation.generator import BaseLLMGenerator, create_generator_from_settings
+from app.guardrails.interfaces import (
+    ConfidenceGuard,
+    GroundingGuard,
+    InputGuard,
+    RelevanceGuard,
+)
 from app.ingestion.chunker import chunk_text
 from app.ingestion.loaders import load_document_bytes
 from app.ingestion.store import DocumentRecord, DocumentStatus, DocumentStore
@@ -96,6 +102,17 @@ class SamvadRuntime:
             else create_reranker_from_settings(self.settings)
         )
 
+        if self.settings.enable_guardrails:
+            self.input_guard = InputGuard()
+            self.confidence_guard = ConfidenceGuard(min_confidence_score=self.settings.min_retrieval_confidence)
+            self.relevance_guard = RelevanceGuard(min_overlap_ratio=self.settings.min_relevance_overlap)
+            self.grounding_guard = GroundingGuard()
+        else:
+            self.input_guard = None
+            self.confidence_guard = None
+            self.relevance_guard = None
+            self.grounding_guard = None
+
         self.orchestrator = PipelineOrchestrator(
             speech_service=self.speech_service,
             query_analyzer=self.query_analyzer,
@@ -107,6 +124,10 @@ class SamvadRuntime:
             },
             default_retriever_key="hybrid",
             generator=self.generator,
+            input_guard=self.input_guard,
+            confidence_guard=self.confidence_guard,
+            relevance_guard=self.relevance_guard,
+            grounding_guard=self.grounding_guard,
             metrics_store=self.metrics_store,
             settings=self.settings,
         )

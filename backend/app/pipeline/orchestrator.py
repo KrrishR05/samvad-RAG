@@ -53,7 +53,7 @@ SAMVAD_CANONICAL_CHUNK = ScoredChunk(
         "• Hybrid Retrieval: Combines dense vector semantic embeddings and sparse lexical Okapi BM25 keyword matching via Reciprocal Rank Fusion (RRF).\n"
         "• Retrieval Intelligence: Deterministic Indic script identification, query intensity detection ('deep' vs 'standard') for exhaustive document synthesis, cross-encoder reranking, and Jaccard token context deduplication.\n"
         "• Knowledge Base & Ingestion: Multi-format parsing (PDF, DOCX, TXT, Markdown) with SHA-256 chunk deduplication, provenance tracking, and persistent SQLite storage.\n"
-        "• Trust & Transparency: Strict citation enforcement ([1], [2]), honest abstention when evidence is absent from the indexed knowledge base, and full stage-by-stage pipeline latency telemetry."
+        "• Trust & Transparency: Strict verifiable citation enforcement with bracketed source numbers, honest abstention when evidence is absent from the indexed knowledge base, and full stage-by-stage pipeline latency telemetry."
     ),
     retrieval_score=1.0,
     reranker_score=1.0,
@@ -284,7 +284,7 @@ class PipelineOrchestrator:
 
         if self.input_guard is not None:
             guard_res = await asyncio.wait_for(
-                self.input_guard.check(cleaned_query),
+                self.input_guard.check(query=cleaned_query),
                 timeout=stage_timeout,
             )
             if not guard_res.passed:
@@ -380,15 +380,35 @@ class PipelineOrchestrator:
         # Context optimization & deduplication (Phase 3 — M3.3)
         ranked_chunks = self.context_optimizer.optimize(ranked_chunks, max_chunks=context_limit)
 
-        # 5. Confidence Check
+        # 5. Relevance & Confidence Check
         ps.begin_stage(PipelineStage.CONFIDENCE_CHECK)
-        if self.confidence_guard is not None and ranked_chunks:
+        if self.relevance_guard is not None and ranked_chunks and not about_samvad:
+            rel_res = await asyncio.wait_for(
+                self.relevance_guard.check(query=cleaned_query, context=ranked_chunks),
+                timeout=stage_timeout,
+            )
+            if not rel_res.passed:
+                ps.complete_stage(output={"passed": False, "reason": rel_res.reason, "check": "relevance"})
+                ps.transition_to(PipelineStage.ABSTAINED)
+                return self._build_abstained_response(
+                    rid=rid,
+                    message=rel_res.reason or "Abstained due to insufficient context relevance.",
+                    chunks=ranked_chunks,
+                    chosen_key=chosen_key,
+                    t0=t0,
+                    qa_ms=qa_stage.duration_ms,
+                    ret_ms=ret_stage.duration_ms,
+                    rerank_ms=rerank_stage.duration_ms if rerank_stage else None,
+                    stages=ps.results,
+                )
+
+        if self.confidence_guard is not None and ranked_chunks and not about_samvad:
             conf_res = await asyncio.wait_for(
-                self.confidence_guard.check(cleaned_query, context=ranked_chunks),
+                self.confidence_guard.check(query=cleaned_query, context=ranked_chunks),
                 timeout=stage_timeout,
             )
             if not conf_res.passed:
-                ps.complete_stage(output={"passed": False, "reason": conf_res.reason})
+                ps.complete_stage(output={"passed": False, "reason": conf_res.reason, "check": "confidence"})
                 ps.transition_to(PipelineStage.ABSTAINED)
                 return self._build_abstained_response(
                     rid=rid,
@@ -485,7 +505,11 @@ class PipelineOrchestrator:
         grounded = gen_result.grounded
         if self.grounding_guard is not None:
             g_res = await asyncio.wait_for(
-                self.grounding_guard.check(gen_result.answer, context=ranked_chunks),
+                self.grounding_guard.check(
+                    query=cleaned_query,
+                    answer=gen_result.answer,
+                    context=ranked_chunks,
+                ),
                 timeout=stage_timeout,
             )
             grounded = g_res.passed

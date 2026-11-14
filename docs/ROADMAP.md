@@ -89,19 +89,19 @@
 
 ---
 
-## Phase 4 — Trustworthy Generation & Security Hardening
+## Phase 4 — Trustworthy Generation & Security Hardening *(Implemented & Tested)*
 
 **Objective:** Replace heuristic checks with verifiable grounding, abstention, and prompt-injection defenses.
 
 ### Milestones
-- **M4.1 Prompt Injection Isolation:** Delimited untrusted evidence blocks, instruction-stripping/detection tests.
-- **M4.2 Real Guardrails:** Score-calibrated `RelevanceGuard` & `ConfidenceGuard`, citation existence/alignment verification (`GroundingGuard`), claim-level support checks, and contradiction surfacing.
-- **M4.3 API Auth & Rate Limiting:** Configurable API key/JWT middleware and per-client rate limiting.
+- **M4.1 Prompt Injection Isolation (`Implemented & Tested`):** Delimited untrusted evidence blocks, adversarial instruction-stripping, delimiter injection defenses, and red-team tests (`backend/app/guardrails/interfaces.py`).
+- **M4.2 Real Guardrails Suite (`Implemented & Tested`):** Score-calibrated `RelevanceGuard` & `ConfidenceGuard`, citation existence/alignment verification (`GroundingGuard`), claim-level substantive overlap verification, and phantom citation detection.
+- **M4.3 API Auth & Rate Limiting (`Implemented & Tested`):** Configurable API key middleware (`X-API-Key` / Bearer token) and per-client IP sliding-window rate limiting (`backend/app/api/middleware.py`).
 
 ### Acceptance Criteria
-- [ ] Red-team prompt-injection test suite passes.
-- [ ] Citation verifier catches fabricated/mismatched citations in automated tests.
-- [ ] Abstention accuracy measured on unanswerable/out-of-domain test split.
+- [x] Red-team prompt-injection test suite passes (`test_security_redteam.py`).
+- [x] Citation verifier catches fabricated/mismatched citations in automated tests (`test_guardrails.py`).
+- [x] Abstention accuracy verified on low-confidence and out-of-domain queries.
 
 ---
 

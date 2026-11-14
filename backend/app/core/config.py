@@ -163,6 +163,44 @@ class Settings(BaseSettings):
         description="Maximum retries for recoverable stage failures",
     )
 
+    # --- Guardrails & Trust (Phase 4) ---
+    enable_guardrails: bool = Field(
+        default=True,
+        description="Enable Phase 4 guardrails: input prompt-injection, confidence, relevance, and grounding",
+    )
+    min_retrieval_confidence: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=1.0,
+        description="Minimum retrieval or reranking score required by ConfidenceGuard",
+    )
+    min_relevance_overlap: float = Field(
+        default=0.05,
+        ge=0.0,
+        le=1.0,
+        description="Minimum keyword overlap ratio required by RelevanceGuard",
+    )
+
+    # --- Security & Rate Limiting (Phase 4) ---
+    api_key: Optional[str] = Field(
+        default=None,
+        description="Optional API key required for non-public API endpoints (X-API-Key or Bearer token)",
+    )
+    enable_rate_limiting: bool = Field(
+        default=False,
+        description="Enable client IP rate limiting",
+    )
+    rate_limit_requests_per_minute: int = Field(
+        default=60,
+        gt=0,
+        description="Maximum requests per minute per IP for query/documents",
+    )
+    rate_limit_voice_per_minute: int = Field(
+        default=20,
+        gt=0,
+        description="Maximum requests per minute per IP for voice TTS/STT",
+    )
+
     # --- Logging ---
     log_level: str = Field(
         default="INFO",
