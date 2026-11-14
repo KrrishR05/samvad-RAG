@@ -130,14 +130,21 @@ export function AppShell({
           href="/"
           className="flex items-center gap-2.5 group focus:outline-none"
         >
-          <SamvadLogo className="w-6 h-6 shrink-0" />
+          <SamvadLogo className="w-8 h-8 shrink-0" />
           <div className="leading-none">
-            <span className="font-display font-semibold text-sm tracking-tight text-[var(--text-primary)] block">
-              SAMVAD
-            </span>
-            <span className="text-[10px] font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
-              RAG Workbench
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-display font-bold text-sm tracking-tight text-[var(--text-primary)] block">
+                SAMVAD
+              </span>
+              <span className="text-[11px] font-sans text-[var(--accent)] font-medium">
+                | संवाद
+              </span>
+            </div>
+            <div className="text-[7.5px] font-mono-tech tracking-wider uppercase mt-1 flex items-center gap-1">
+              <span className="text-[var(--text-secondary)] font-semibold">INTELLIGENCE</span>
+              <span className="text-[var(--accent)] font-bold">THROUGH</span>
+              <span className="text-[var(--brand-mint)] font-semibold">EVIDENCE</span>
+            </div>
           </div>
         </Link>
         <button
@@ -158,7 +165,7 @@ export function AppShell({
         <button
           type="button"
           onClick={handleNewChat}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-[var(--accent)] text-[#0C1412] hover:bg-[var(--accent-hover)] transition-all cursor-pointer shadow-xs active:scale-[0.99]"
         >
           <PlusIcon className="w-3.5 h-3.5" />
           <span>New Research Session</span>
@@ -317,7 +324,7 @@ export function AppShell({
   );
 
   return (
-    <div className="h-screen w-full flex overflow-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)]">
+    <div className="h-screen w-full flex overflow-hidden text-[var(--text-primary)]">
       {/* Desktop Sidebar */}
       {sidebarOpen && (
         <aside className="hidden md:block w-[260px] shrink-0 h-full">
@@ -337,9 +344,9 @@ export function AppShell({
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col h-full">
+      <div className="flex-1 min-w-0 flex flex-col h-full samvad-workspace-bg">
         {/* Top Utility Strip */}
-        <header className="h-14 shrink-0 px-4 border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]/90 backdrop-blur-sm flex items-center justify-between gap-3">
+        <header className="h-14 shrink-0 px-4 samvad-header-bar flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
@@ -357,6 +364,17 @@ export function AppShell({
             >
               <SidebarToggleIcon className="w-4 h-4" />
             </button>
+            {!sidebarOpen && (
+              <Link href="/" className="hidden md:flex items-center gap-1.5 mr-1 group">
+                <SamvadLogo className="w-5 h-5 shrink-0" />
+                <span className="font-display font-bold text-xs tracking-tight text-[var(--text-primary)]">
+                  SAMVAD
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)]">
+                  | संवाद
+                </span>
+              </Link>
+            )}
             <h1 className="font-display font-medium text-sm text-[var(--text-primary)] truncate">
               {pageTitle || "Research Workspace"}
             </h1>

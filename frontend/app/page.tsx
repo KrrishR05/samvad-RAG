@@ -204,12 +204,12 @@ export default function ResearchWorkspacePage() {
           sess.id !== sessionId
             ? sess
             : {
-                ...sess,
-                updatedAt: new Date().toISOString(),
-                turns: sess.turns.map((t) =>
-                  t.id === turnId ? { ...t, ...patch } : t
-                ),
-              }
+              ...sess,
+              updatedAt: new Date().toISOString(),
+              turns: sess.turns.map((t) =>
+                t.id === turnId ? { ...t, ...patch } : t
+              ),
+            }
         )
       );
     },
@@ -248,14 +248,14 @@ export default function ResearchWorkspacePage() {
           sess.id !== sessionId
             ? sess
             : {
-                ...sess,
-                title:
-                  sess.turns.length === 0
-                    ? query.slice(0, 48) + (query.length > 48 ? "..." : "")
-                    : sess.title,
-                updatedAt: now,
-                turns: [...sess.turns, pendingTurn],
-              }
+              ...sess,
+              title:
+                sess.turns.length === 0
+                  ? query.slice(0, 48) + (query.length > 48 ? "..." : "")
+                  : sess.title,
+              updatedAt: now,
+              turns: [...sess.turns, pendingTurn],
+            }
         )
       );
       setInspectedTurnId(turnId);
@@ -321,12 +321,12 @@ export default function ResearchWorkspacePage() {
           sess.id !== sessionId
             ? sess
             : {
-                ...sess,
-                title:
-                  sess.turns.length === 0 ? "Voice Research Query" : sess.title,
-                updatedAt: now,
-                turns: [...sess.turns, pendingTurn],
-              }
+              ...sess,
+              title:
+                sess.turns.length === 0 ? "Voice Research Query" : sess.title,
+              updatedAt: now,
+              turns: [...sess.turns, pendingTurn],
+            }
         )
       );
       setInspectedTurnId(turnId);
@@ -398,11 +398,10 @@ export default function ResearchWorkspacePage() {
           <button
             type="button"
             onClick={() => setInspectorOpen((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors cursor-pointer ${
-              inspectorOpen
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors cursor-pointer ${inspectorOpen
                 ? "bg-[var(--accent-soft)] border-[var(--accent-border)] text-[var(--text-primary)]"
                 : "bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            }`}
+              }`}
           >
             <InspectorToggleIcon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Inspector</span>
@@ -415,15 +414,15 @@ export default function ResearchWorkspacePage() {
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <div className="max-w-3xl mx-auto">
             {!activeSession || activeSession.turns.length === 0 ? (
-              <div className="py-10 sm:py-16 space-y-8">
+              <div className="py-10 sm:py-16 space-y-8 samvad-welcome-bg rounded-2xl">
                 {/* Editorial Welcome Header */}
-                <div className="space-y-3">
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[11px] font-mono-tech text-[var(--text-secondary)]">
-                    <SamvadLogo className="w-4 h-4" />
-                    <span>SAMVAD Multilingual RAG Platform</span>
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[var(--bg-panel)] border border-[var(--accent-border)]/40 text-[11px] font-mono-tech text-[var(--text-secondary)] shadow-xs" style={{boxShadow: '0 0 20px rgba(167,139,250,0.08)'}}>
+                    <SamvadLogo className="w-4 h-4 shrink-0" />
+                    <span>SAMVAD <span className="text-[var(--accent)] font-semibold">| संवाद</span> &mdash; Intelligence Through Evidence</span>
                   </div>
                   <h2 className="font-display font-semibold text-2xl sm:text-3xl tracking-tight text-[var(--text-primary)] leading-tight">
-                    Evidence-grounded answers across multilingual documents.
+                    Evidence-grounded answers across <span className="text-[var(--accent)]">multilingual documents</span>.
                   </h2>
                   <p className="text-sm sm:text-[15px] text-[var(--text-secondary)] leading-relaxed max-w-2xl">
                     Query your knowledge base using hybrid Reciprocal Rank Fusion (BM25 + dense vector search), inspect retrieved source passages with clickable citations, and audit every pipeline stage in real time.
@@ -434,7 +433,7 @@ export default function ResearchWorkspacePage() {
                 {pipelineStatus &&
                   (!pipelineStatus.retrieval_ready ||
                     !pipelineStatus.llm_configured) && (
-                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] p-4 space-y-3">
+                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)]/80 backdrop-blur-sm p-4 space-y-3">
                       <p className="text-xs font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
                         Workspace Readiness
                       </p>
@@ -491,7 +490,7 @@ export default function ResearchWorkspacePage() {
                         key={prompt}
                         type="button"
                         onClick={() => setComposerQuery(prompt)}
-                        className="text-left px-4 py-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] hover:bg-[var(--bg-surface)] hover:border-[var(--border-default)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                        className="samvad-prompt-card text-left px-4 py-3 rounded-lg text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                       >
                         {prompt}
                       </button>

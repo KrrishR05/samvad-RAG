@@ -1,11 +1,12 @@
 @import "tailwindcss";
 
 /*
- * SAMVAD Editorial Research Design System
- * Dual intentionally crafted themes:
- *   Dark (default): Obsidian charcoal surfaces (#09090b / #111114 / #18181c), 1px hairlines (#27272a)
- *   Light: Warm architectural stone (#fafaf9 / #ffffff / #f4f4f5), 1px hairlines (#e4e4e7)
- * Distinctive Accent: Refined Cobalt-Indigo (#5b6cf9 dark / #4f46e5 light)
+ * SAMVAD Official Brand Design System
+ * Inspired by the official SAMVAD brand identity:
+ *   - Soft Lavender (#A78BFA): Primary Accent & Interactive Glow
+ *   - Forest Green (#123C32): Sophisticated Architectural Deep Emerald
+ *   - Obsidian (#0C1412): Atmospheric Canvas Background
+ *   - Brand Mint (#2DD4BF): Subtle Terminal Gradient from Emblem
  */
 
 :root {
@@ -13,73 +14,113 @@
   --font-display: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --bg-canvas: #09090b;
-  --bg-panel: #111114;
-  --bg-surface: #18181c;
-  --bg-hover: #202026;
+  /* Surfaces — Obsidian (#0C1412) with Forest Green Depth */
+  --bg-canvas: #0C1412;
+  --bg-panel: #101C19;
+  --bg-surface: #152723;
+  --bg-hover: #1B332E;
 
-  --border-subtle: #232329;
-  --border-default: #2e2e36;
-  --border-strong: #3f3f4a;
+  /* Forest Green Brand Solids & Tints */
+  --brand-forest: #123C32;
+  --brand-forest-light: #1A5446;
+  --brand-forest-soft: rgba(18, 60, 50, 0.45);
+  --brand-forest-border: #234E42;
 
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  /* Soft Lavender Brand Accent (#A78BFA) */
+  --brand-lavender: #A78BFA;
+  --accent: #A78BFA;
+  --accent-hover: #BBA2FB;
+  --accent-soft: rgba(167, 139, 250, 0.14);
+  --accent-border: rgba(167, 139, 250, 0.35);
+  --accent-glow: 0 0 24px rgba(167, 139, 250, 0.25);
 
-  --accent: #5b6cf9;
-  --accent-hover: #6d7cfb;
-  --accent-soft: rgba(91, 108, 249, 0.12);
-  --accent-border: rgba(91, 108, 249, 0.35);
+  /* Emblem Secondary Mint/Cyan Highlight */
+  --brand-mint: #2DD4BF;
+  --brand-mint-soft: rgba(45, 212, 191, 0.12);
+  --brand-mint-border: rgba(45, 212, 191, 0.35);
 
-  --status-success: #22c55e;
-  --status-success-soft: rgba(34, 197, 94, 0.12);
-  --status-warning: #eab308;
-  --status-warning-soft: rgba(234, 179, 8, 0.12);
-  --status-error: #ef4444;
-  --status-error-soft: rgba(239, 68, 68, 0.12);
-  --status-abstained: #a78bfa;
-  --status-abstained-soft: rgba(167, 139, 250, 0.12);
+  /* Hairlines & Borders */
+  --border-subtle: #19312B;
+  --border-default: #214139;
+  --border-strong: #2F594E;
+
+  /* Typography — Pristine off-white with cool sage contrast */
+  --text-primary: #F2F9F7;
+  --text-secondary: #A0BFB7;
+  --text-muted: #64857D;
+
+  /* Status Colors */
+  --status-success: #34D399;
+  --status-success-soft: rgba(52, 211, 153, 0.12);
+  --status-warning: #FBBF24;
+  --status-warning-soft: rgba(251, 191, 36, 0.12);
+  --status-error: #F87171;
+  --status-error-soft: rgba(248, 113, 113, 0.12);
+  --status-abstained: #A78BFA;
+  --status-abstained-soft: rgba(167, 139, 250, 0.14);
 
   color-scheme: dark;
 }
 
 html[data-theme="light"] {
-  --bg-canvas: #fafaf9;
-  --bg-panel: #ffffff;
-  --bg-surface: #f4f4f5;
-  --bg-hover: #ececef;
+  --bg-canvas: #F5F9F8;
+  --bg-panel: #FFFFFF;
+  --bg-surface: #EDF5F2;
+  --bg-hover: #E1ECE8;
 
-  --border-subtle: #e4e4e7;
-  --border-default: #d4d4d8;
-  --border-strong: #a1a1aa;
+  --brand-forest: #123C32;
+  --brand-forest-light: #1A5446;
+  --brand-forest-soft: rgba(18, 60, 50, 0.1);
+  --brand-forest-border: #C8DDD6;
 
-  --text-primary: #09090b;
-  --text-secondary: #52525b;
-  --text-muted: #71717a;
+  --brand-lavender: #7C3AED;
+  --accent: #7C3AED;
+  --accent-hover: #6D28D9;
+  --accent-soft: rgba(124, 58, 237, 0.1);
+  --accent-border: rgba(124, 58, 237, 0.3);
+  --accent-glow: 0 0 20px rgba(124, 58, 237, 0.2);
 
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-soft: rgba(79, 70, 229, 0.09);
-  --accent-border: rgba(79, 70, 229, 0.3);
+  --brand-mint: #0D9488;
+  --brand-mint-soft: rgba(13, 148, 136, 0.1);
+  --brand-mint-border: rgba(13, 148, 136, 0.3);
 
-  --status-success: #16a34a;
+  --border-subtle: #D2E3DD;
+  --border-default: #B8CFC7;
+  --border-strong: #81A89D;
+
+  --text-primary: #0C1412;
+  --text-secondary: #26463E;
+  --text-muted: #51726A;
+
+  --status-success: #16A34A;
   --status-success-soft: rgba(22, 163, 74, 0.1);
-  --status-warning: #ca8a04;
+  --status-warning: #CA8A04;
   --status-warning-soft: rgba(202, 138, 4, 0.1);
-  --status-error: #dc2626;
+  --status-error: #DC2626;
   --status-error-soft: rgba(220, 38, 38, 0.1);
-  --status-abstained: #7c3aed;
+  --status-abstained: #7C3AED;
   --status-abstained-soft: rgba(124, 58, 237, 0.1);
 
   color-scheme: light;
 }
 
 body {
-  background: var(--bg-canvas);
+  background-color: var(--bg-canvas);
+  background-image: 
+    radial-gradient(circle at 12% 0%, rgba(167, 139, 250, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 88% 5%, rgba(18, 60, 50, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 92% 95%, rgba(45, 212, 191, 0.04) 0%, transparent 40%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html[data-theme="light"] body {
+  background-image: 
+    radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 88% 5%, rgba(18, 60, 50, 0.06) 0%, transparent 50%);
 }
 
 .font-display {
@@ -110,6 +151,92 @@ body {
   background: var(--border-strong);
 }
 
+/* ============================================================
+ *  SAMVAD Workspace Backgrounds
+ * ============================================================ */
+
+/* Full canvas background used on the main scrollable chat area */
+.samvad-workspace-bg {
+  background:
+    radial-gradient(ellipse 55% 45% at 75% 8%,  rgba(167,139,250,0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 55% at 8%  92%,  rgba(18, 60, 50, 0.35)  0%, transparent 55%),
+    radial-gradient(ellipse 38% 38% at 92% 85%,  rgba(45,212,191,0.06)   0%, transparent 50%),
+    radial-gradient(ellipse 60% 60% at 50% 50%,  rgba(18, 60, 50, 0.08)  0%, transparent 70%),
+    linear-gradient(170deg, #0C1412 0%, #101C19 45%, #0C1412 100%);
+  background-attachment: local;
+}
+
+/* Message card — forest-green tinted surface with glass depth */
+.samvad-message-card {
+  background: linear-gradient(
+    140deg,
+    rgba(21, 39, 35, 0.92) 0%,
+    rgba(16, 28, 25, 0.96) 100%
+  );
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Inspected/active card — adds a lavender atmospheric tint */
+.samvad-message-card-active {
+  background: linear-gradient(
+    140deg,
+    rgba(31, 24, 48, 0.72) 0%,
+    rgba(21, 39, 35, 0.95) 60%,
+    rgba(16, 28, 25, 0.98) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Welcome / empty-state area: subtle ambient depth */
+.samvad-welcome-bg {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%,  rgba(167,139,250,0.07) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 50% at 20% 100%, rgba(18,60,50,0.25)    0%, transparent 60%);
+}
+
+/* Top header bar: glassy forest-green tint */
+.samvad-header-bar {
+  background: linear-gradient(
+    90deg,
+    rgba(12, 20, 18, 0.95) 0%,
+    rgba(14, 22, 20, 0.92) 100%
+  );
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border-bottom: 1px solid rgba(35, 78, 66, 0.6);
+}
+
+/* Starter prompt card hover glow */
+.samvad-prompt-card {
+  background: linear-gradient(
+    135deg,
+    rgba(16, 28, 25, 0.9) 0%,
+    rgba(14, 24, 21, 0.95) 100%
+  );
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.samvad-prompt-card:hover {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 18px rgba(167,139,250,0.10), 0 2px 8px rgba(0,0,0,0.3);
+  background: linear-gradient(
+    135deg,
+    rgba(21, 39, 35, 0.95) 0%,
+    rgba(28, 20, 44, 0.60) 100%
+  );
+}
+
+/* Lavender left-border accent for query strip */
+.samvad-query-accent {
+  border-left: 2px solid var(--accent);
+}
+
+/* ============================================================
+ *  Keyframes
+ * ============================================================ */
+
 /* Subtle voice recording ring */
 @keyframes pulse-ring {
   0% {
@@ -124,4 +251,21 @@ body {
 
 .animate-pulse-ring {
   animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* Shimmer for loading skeletons */
+@keyframes samvad-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.samvad-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(21,39,35,0.6) 25%,
+    rgba(45,212,191,0.07) 50%,
+    rgba(21,39,35,0.6) 75%
+  );
+  background-size: 200% 100%;
+  animation: samvad-shimmer 2s linear infinite;
 }
