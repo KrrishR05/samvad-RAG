@@ -28,11 +28,13 @@ from app.ingestion.loaders import load_document_bytes
 from app.ingestion.store import DocumentRecord, DocumentStatus, DocumentStore
 from app.pipeline.interfaces import QueryAnalyzer, Reranker, SpeechService
 from app.pipeline.orchestrator import PipelineOrchestrator, set_orchestrator
+from app.retrieval.cache import RetrievalCache
 from app.retrieval.dense import DenseRetriever
 from app.retrieval.hybrid import HybridRetriever
 from app.retrieval.lexical import LexicalRetriever
 from app.retrieval.query_analyzer import IndicQueryAnalyzer
 from app.retrieval.reranker import create_reranker_from_settings
+from app.retrieval.router import AdaptiveRouter
 from app.schemas.pipeline import ChunkStrategy
 from app.speech.provider import create_speech_service_from_settings
 
@@ -102,6 +104,15 @@ class SamvadRuntime:
             else create_reranker_from_settings(self.settings)
         )
 
+        self.query_router = (
+            AdaptiveRouter() if self.settings.enable_adaptive_routing else None
+        )
+        self.retrieval_cache = (
+            RetrievalCache(ttl_seconds=self.settings.retrieval_cache_ttl_seconds)
+            if self.settings.enable_retrieval_cache
+            else None
+        )
+
         if self.settings.enable_guardrails:
             self.input_guard = InputGuard()
             self.confidence_guard = ConfidenceGuard(min_confidence_score=self.settings.min_retrieval_confidence)
@@ -117,6 +128,8 @@ class SamvadRuntime:
             speech_service=self.speech_service,
             query_analyzer=self.query_analyzer,
             reranker=self.reranker,
+            query_router=self.query_router,
+            retrieval_cache=self.retrieval_cache,
             retrievers={
                 "hybrid": self.hybrid_retriever,
                 "dense": self.dense_retriever,
@@ -158,6 +171,8 @@ class SamvadRuntime:
             chunks = self.document_store.get_all_chunks()
             self.lexical_retriever.build_index(chunks)
             await self.dense_retriever.build_index(chunks)
+            if self.retrieval_cache is not None:
+                self.retrieval_cache.invalidate()
             logger.info("Rebuilt lexical and dense indexes (%d chunks).", len(chunks))
             return len(chunks)
 

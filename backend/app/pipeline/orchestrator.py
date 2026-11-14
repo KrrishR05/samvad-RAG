@@ -32,6 +32,7 @@ from app.pipeline.interfaces import (
     SpeechService,
 )
 from app.pipeline.state import PipelineState
+from app.retrieval.cache import RetrievalCache
 from app.retrieval.context_builder import ContextOptimizer
 from app.schemas.analytics import LatencyRecord
 from app.schemas.pipeline import ChunkMetadata, PipelineStage, StageResult, StageStatus
@@ -103,6 +104,7 @@ class PipelineOrchestrator:
         confidence_guard: Optional[GuardrailService] = None,
         grounding_guard: Optional[GuardrailService] = None,
         query_router: Optional[QueryRouter] = None,
+        retrieval_cache: Optional[RetrievalCache] = None,
         speech_normalizer: Optional[SpeechNormalizer] = None,
         metrics_store: Optional[MetricsStore] = None,
         settings: Optional[Settings] = None,
@@ -124,9 +126,13 @@ class PipelineOrchestrator:
         self.confidence_guard = confidence_guard
         self.grounding_guard = grounding_guard
         self.query_router = query_router
+        self.retrieval_cache = retrieval_cache
         self.metrics_store = metrics_store or get_metrics_store()
         self.settings = settings
-        self.context_optimizer = ContextOptimizer()
+        cfg = settings or get_settings()
+        self.context_optimizer = ContextOptimizer(
+            enable_compression=getattr(cfg, "enable_context_compression", False)
+        )
 
     # ------------------------------------------------------------------
     # Public entry points
@@ -414,6 +420,19 @@ class PipelineOrchestrator:
             }
         )
 
+        # Dynamic / Adaptive Retriever Selection (Phase 6 — M6.1)
+        if retriever_strategy is None and self.query_router is not None and getattr(cfg, "enable_adaptive_routing", True):
+            try:
+                routed_key = await asyncio.wait_for(
+                    self.query_router.route(analyzed),
+                    timeout=stage_timeout,
+                )
+                if routed_key in self.retrievers:
+                    chosen_key = routed_key
+                    active_retriever = self.retrievers[routed_key]
+            except Exception:
+                pass  # Fall back to initially selected active_retriever
+
         # 3. Retrieval
         await _begin_stage(PipelineStage.RETRIEVING)
         if top_k is not None:
@@ -423,21 +442,49 @@ class PipelineOrchestrator:
         else:
             retrieval_k = cfg.retrieval_top_k
 
-        raw_chunks = list(
-            await asyncio.wait_for(
-                active_retriever.retrieve(
-                    analyzed.processed_text,
-                    top_k=retrieval_k,
-                    language=analyzed.language,
-                ),
-                timeout=stage_timeout,
+        # Check retrieval cache (Phase 6 — M6.2)
+        cache_hit = False
+        raw_chunks: Optional[list[ScoredChunk]] = None
+        if self.retrieval_cache is not None and getattr(cfg, "enable_retrieval_cache", True):
+            cached_res = self.retrieval_cache.get(
+                query=analyzed.processed_text,
+                language=analyzed.language,
+                strategy=chosen_key,
+                top_k=retrieval_k,
             )
-        )
+            if cached_res is not None:
+                raw_chunks = cached_res
+                cache_hit = True
+
+        if raw_chunks is None:
+            raw_chunks = list(
+                await asyncio.wait_for(
+                    active_retriever.retrieve(
+                        analyzed.processed_text,
+                        top_k=retrieval_k,
+                        language=analyzed.language,
+                    ),
+                    timeout=stage_timeout,
+                )
+            )
+            if self.retrieval_cache is not None and getattr(cfg, "enable_retrieval_cache", True):
+                self.retrieval_cache.set(
+                    query=analyzed.processed_text,
+                    language=analyzed.language,
+                    strategy=chosen_key,
+                    top_k=retrieval_k,
+                    results=raw_chunks,
+                )
+
         if about_samvad:
             raw_chunks.insert(0, SAMVAD_CANONICAL_CHUNK)
 
         ret_stage = await _complete_stage(
-            output={"strategy": chosen_key, "retrieved_count": len(raw_chunks)}
+            output={
+                "strategy": chosen_key,
+                "retrieved_count": len(raw_chunks),
+                "cache_hit": cache_hit,
+            }
         )
 
         # 4. Optional Reranking
@@ -465,8 +512,12 @@ class PipelineOrchestrator:
         else:
             ranked_chunks = raw_chunks[:context_limit]
 
-        # Context optimization & deduplication (Phase 3 — M3.3)
-        ranked_chunks = self.context_optimizer.optimize(ranked_chunks, max_chunks=context_limit)
+        # Context optimization, deduplication & compression (Phase 3 & 6)
+        ranked_chunks = self.context_optimizer.optimize(
+            ranked_chunks,
+            max_chunks=context_limit,
+            query=analyzed.processed_text,
+        )
 
         # 5. Relevance & Confidence Check
         await _begin_stage(PipelineStage.CONFIDENCE_CHECK)

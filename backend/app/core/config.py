@@ -145,6 +145,23 @@ class Settings(BaseSettings):
         default=True,
         description="Enable Indic/multilingual query analysis and intent detection",
     )
+    enable_adaptive_routing: bool = Field(
+        default=True,
+        description="Enable adaptive query routing (Phase 6 — M6.1)",
+    )
+    enable_retrieval_cache: bool = Field(
+        default=True,
+        description="Enable retrieval candidate caching for latency optimization (Phase 6 — M6.2)",
+    )
+    retrieval_cache_ttl_seconds: float = Field(
+        default=300.0,
+        gt=0.0,
+        description="TTL in seconds for cached retrieval results",
+    )
+    enable_context_compression: bool = Field(
+        default=False,
+        description="Enable sentence-level context compression before generation (Phase 6 — M6.3)",
+    )
 
     # --- Pipeline ---
     pipeline_timeout_seconds: float = Field(
