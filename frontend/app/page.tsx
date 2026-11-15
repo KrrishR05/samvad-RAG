@@ -15,6 +15,7 @@ import {
   type ResearchTurn,
 } from "@/components/workspace/ResearchMessage";
 import { InspectorDrawer } from "@/components/workspace/InspectorDrawer";
+import { ChatCanvasGrid } from "@/components/workspace/ChatCanvasGrid";
 import {
   DocumentsIcon,
   InspectorToggleIcon,
@@ -410,9 +411,15 @@ export default function ResearchWorkspacePage() {
       }
     >
       {/* Center Research Column */}
-      <div className="flex-1 min-w-0 flex flex-col h-full">
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="max-w-3xl mx-auto">
+      <div className="flex-1 min-w-0 flex flex-col h-full relative">
+        {/* Central Conversation Canvas with Technical Grid & Floating Diamond Particles */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          {/* Confined animated background */}
+          <ChatCanvasGrid />
+
+          {/* Scrolling Conversation Content */}
+          <div className="absolute inset-0 overflow-y-auto px-4 py-6 z-10">
+            <div className="max-w-3xl mx-auto">
             {!activeSession || activeSession.turns.length === 0 ? (
               <div className="py-10 sm:py-16 space-y-8">
                 {/* Editorial Welcome Header */}
@@ -511,6 +518,7 @@ export default function ResearchWorkspacePage() {
                 <div ref={threadEndRef} />
               </div>
             )}
+            </div>
           </div>
         </div>
 

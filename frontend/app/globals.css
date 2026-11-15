@@ -106,7 +106,7 @@ html[data-theme="light"] {
 
 body {
   background-color: var(--bg-canvas);
-  background-image: 
+  background-image:
     radial-gradient(circle at 12% 0%, rgba(167, 139, 250, 0.08) 0%, transparent 45%),
     radial-gradient(circle at 88% 5%, rgba(18, 60, 50, 0.4) 0%, transparent 50%),
     radial-gradient(circle at 92% 95%, rgba(45, 212, 191, 0.04) 0%, transparent 40%);
@@ -118,7 +118,7 @@ body {
 }
 
 html[data-theme="light"] body {
-  background-image: 
+  background-image:
     radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.05) 0%, transparent 45%),
     radial-gradient(circle at 88% 5%, rgba(18, 60, 50, 0.06) 0%, transparent 50%);
 }
@@ -157,6 +157,7 @@ html[data-theme="light"] body {
     transform: scale(1);
     opacity: 0.55;
   }
+
   100% {
     transform: scale(1.75);
     opacity: 0;
@@ -165,4 +166,190 @@ html[data-theme="light"] body {
 
 .animate-pulse-ring {
   animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* ============================================================
+ *  SAMVAD Central Chat Canvas — Animated Grid & Diamonds
+ *  Confined strictly to the central conversation area
+ * ============================================================ */
+
+@keyframes samvad-intersect-pulse {
+
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+
+  50% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+.samvad-intersection-pulse {
+  animation: samvad-intersect-pulse 5.5s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes samvad-diamond-float-1 {
+  0% {
+    opacity: 0.25;
+    transform: translate3d(-50%, -50%, 0) scale(0.85);
+  }
+
+  35% {
+    opacity: 0.95;
+    transform: translate3d(calc(-50% + 20px), -50%, 0) scale(1.08);
+  }
+
+  70% {
+    opacity: 0.6;
+    transform: translate3d(calc(-50% + 32px), -50%, 0) scale(0.95);
+  }
+
+  100% {
+    opacity: 0.25;
+    transform: translate3d(-50%, -50%, 0) scale(0.85);
+  }
+}
+
+.samvad-diamond-anim-1 {
+  animation: samvad-diamond-float-1 13s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes samvad-diamond-float-2 {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(-50%, -50%, 0) scale(0.9);
+  }
+
+  45% {
+    opacity: 1;
+    transform: translate3d(-50%, calc(-50% - 22px), 0) scale(1.12);
+  }
+
+  80% {
+    opacity: 0.5;
+    transform: translate3d(-50%, calc(-50% - 8px), 0) scale(0.95);
+  }
+
+  100% {
+    opacity: 0.2;
+    transform: translate3d(-50%, -50%, 0) scale(0.9);
+  }
+}
+
+.samvad-diamond-anim-2 {
+  animation: samvad-diamond-float-2 11s ease-in-out 1.5s infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes samvad-diamond-float-3 {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(-50%, -50%, 0) scale(0.85);
+  }
+
+  40% {
+    opacity: 0.9;
+    transform: translate3d(calc(-50% + 14px), calc(-50% - 16px), 0) scale(1.06);
+  }
+
+  75% {
+    opacity: 0.45;
+    transform: translate3d(calc(-50% + 6px), calc(-50% - 8px), 0) scale(0.92);
+  }
+
+  100% {
+    opacity: 0.2;
+    transform: translate3d(-50%, -50%, 0) scale(0.85);
+  }
+}
+
+.samvad-diamond-anim-3 {
+  animation: samvad-diamond-float-3 15s ease-in-out 3s infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes samvad-diamond-float-4 {
+
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translate3d(-50%, -50%, 0) scale(0.85);
+  }
+
+  50% {
+    opacity: 0.95;
+    transform: translate3d(-50%, -50%, 0) scale(1.18);
+  }
+}
+
+.samvad-diamond-anim-4 {
+  animation: samvad-diamond-float-4 8.5s ease-in-out 0.5s infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes samvad-diamond-float-5 {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(-50%, -50%, 0) scale(0.88);
+  }
+
+  45% {
+    opacity: 0.9;
+    transform: translate3d(calc(-50% - 16px), calc(-50% + 12px), 0) scale(1.08);
+  }
+
+  80% {
+    opacity: 0.4;
+    transform: translate3d(calc(-50% - 6px), calc(-50% + 4px), 0) scale(0.92);
+  }
+
+  100% {
+    opacity: 0.2;
+    transform: translate3d(-50%, -50%, 0) scale(0.88);
+  }
+}
+
+.samvad-diamond-anim-5 {
+  animation: samvad-diamond-float-5 14s ease-in-out 2s infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes samvad-diamond-float-6 {
+
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: translate3d(-50%, -50%, 0) scale(0.8);
+  }
+
+  50% {
+    opacity: 0.85;
+    transform: translate3d(-50%, -50%, 0) scale(1.1);
+  }
+}
+
+.samvad-diamond-anim-6 {
+  animation: samvad-diamond-float-6 17s ease-in-out 4.5s infinite;
+  will-change: opacity, transform;
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+
+  .samvad-intersection-pulse,
+  .samvad-diamond-anim-1,
+  .samvad-diamond-anim-2,
+  .samvad-diamond-anim-3,
+  .samvad-diamond-anim-4,
+  .samvad-diamond-anim-5,
+  .samvad-diamond-anim-6 {
+    animation: none !important;
+    opacity: 0.5 !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+  }
 }
