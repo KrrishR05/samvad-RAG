@@ -189,262 +189,42 @@ html[data-theme="light"] .samvad-canvas-glow {
 /* Technical Grid Lines - Dark vs Light */
 .samvad-canvas-grid-lines {
   background-image:
-    linear-gradient(to right, rgba(41, 68, 59, 0.32) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(41, 68, 59, 0.32) 1px, transparent 1px);
+    linear-gradient(to right, rgba(46, 168, 126, 0.40) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(46, 168, 126, 0.40) 1px, transparent 1px);
   background-size: 64px 64px;
   background-position: center top;
-  mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.4) 88%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.4) 88%, transparent 100%);
+  mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 70%, rgba(0,0,0,0.45) 88%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 70%, rgba(0,0,0,0.45) 88%, transparent 100%);
 }
 
 html[data-theme="light"] .samvad-canvas-grid-lines {
   background-image:
-    linear-gradient(to right, rgba(18, 60, 50, 0.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(18, 60, 50, 0.09) 1px, transparent 1px);
-  mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.3) 88%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.3) 88%, transparent 100%);
+    linear-gradient(to right, rgba(22, 101, 80, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(22, 101, 80, 0.22) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 70%, rgba(0,0,0,0.35) 88%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 70%, rgba(0,0,0,0.35) 88%, transparent 100%);
 }
 
-/* Intersection Nodes - Dark vs Light */
-.samvad-node-teal {
-  background: #70B8A4;
-  box-shadow: 0 0 10px 2px rgba(112, 184, 164, 0.55);
-}
-
-html[data-theme="light"] .samvad-node-teal {
-  background: #0D9488 !important;
-  box-shadow: 0 0 8px 2px rgba(13, 148, 136, 0.35) !important;
-}
-
-.samvad-node-lavender {
-  background: #D8C9FF;
-  box-shadow: 0 0 8px 2px rgba(167, 139, 250, 0.45);
-}
-
-html[data-theme="light"] .samvad-node-lavender {
-  background: #7C3AED !important;
-  box-shadow: 0 0 8px 2px rgba(124, 58, 237, 0.3) !important;
-}
-
-/* Diamond Stars - Dark vs Light */
-.samvad-diamond-teal path {
-  fill: #70B8A4;
-}
-
-.samvad-diamond-teal {
-  filter: drop-shadow(0 0 7px rgba(112, 184, 164, 0.85));
-}
-
-html[data-theme="light"] .samvad-diamond-teal path {
-  fill: #0D9488;
-}
-
-html[data-theme="light"] .samvad-diamond-teal {
-  filter: drop-shadow(0 0 5px rgba(13, 148, 136, 0.45));
-}
-
-.samvad-diamond-lavender path {
-  fill: #D8C9FF;
-}
-
-.samvad-diamond-lavender {
-  filter: drop-shadow(0 0 7px rgba(167, 139, 250, 0.8));
-}
-
-html[data-theme="light"] .samvad-diamond-lavender path {
-  fill: #7C3AED;
-}
-
-html[data-theme="light"] .samvad-diamond-lavender {
-  filter: drop-shadow(0 0 5px rgba(124, 58, 237, 0.4));
-}
-
-/* Vertical Beam Trace */
-.samvad-vertical-beam {
-  background: linear-gradient(180deg, transparent 0%, rgba(112, 184, 164, 0.6) 50%, transparent 100%);
-}
-
-html[data-theme="light"] .samvad-vertical-beam {
-  background: linear-gradient(180deg, transparent 0%, rgba(13, 148, 136, 0.3) 50%, transparent 100%);
-}
-
-@keyframes samvad-intersect-pulse {
-
+/* Ambient Simultaneous Grid Breathing Effect */
+@keyframes samvad-grid-breathe {
   0%,
   100% {
-    opacity: 0.35;
-    transform: translate(-50%, -50%) scale(0.9);
-  }
-
-  50% {
-    opacity: 0.95;
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-}
-
-.samvad-intersection-pulse {
-  animation: samvad-intersect-pulse 5.5s ease-in-out infinite;
-  will-change: opacity, transform;
-}
-
-@keyframes samvad-diamond-float-1 {
-  0% {
-    opacity: 0.25;
-    transform: translate3d(-50%, -50%, 0) scale(0.85);
-  }
-
-  35% {
-    opacity: 0.95;
-    transform: translate3d(calc(-50% + 20px), -50%, 0) scale(1.08);
-  }
-
-  70% {
-    opacity: 0.6;
-    transform: translate3d(calc(-50% + 32px), -50%, 0) scale(0.95);
-  }
-
-  100% {
-    opacity: 0.25;
-    transform: translate3d(-50%, -50%, 0) scale(0.85);
-  }
-}
-
-.samvad-diamond-anim-1 {
-  animation: samvad-diamond-float-1 13s ease-in-out infinite;
-  will-change: opacity, transform;
-}
-
-@keyframes samvad-diamond-float-2 {
-  0% {
-    opacity: 0.2;
-    transform: translate3d(-50%, -50%, 0) scale(0.9);
-  }
-
-  45% {
     opacity: 1;
-    transform: translate3d(-50%, calc(-50% - 22px), 0) scale(1.12);
   }
-
-  80% {
-    opacity: 0.5;
-    transform: translate3d(-50%, calc(-50% - 8px), 0) scale(0.95);
-  }
-
-  100% {
-    opacity: 0.2;
-    transform: translate3d(-50%, -50%, 0) scale(0.9);
-  }
-}
-
-.samvad-diamond-anim-2 {
-  animation: samvad-diamond-float-2 11s ease-in-out 1.5s infinite;
-  will-change: opacity, transform;
-}
-
-@keyframes samvad-diamond-float-3 {
-  0% {
-    opacity: 0.2;
-    transform: translate3d(-50%, -50%, 0) scale(0.85);
-  }
-
-  40% {
-    opacity: 0.9;
-    transform: translate3d(calc(-50% + 14px), calc(-50% - 16px), 0) scale(1.06);
-  }
-
-  75% {
-    opacity: 0.45;
-    transform: translate3d(calc(-50% + 6px), calc(-50% - 8px), 0) scale(0.92);
-  }
-
-  100% {
-    opacity: 0.2;
-    transform: translate3d(-50%, -50%, 0) scale(0.85);
-  }
-}
-
-.samvad-diamond-anim-3 {
-  animation: samvad-diamond-float-3 15s ease-in-out 3s infinite;
-  will-change: opacity, transform;
-}
-
-@keyframes samvad-diamond-float-4 {
-
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: translate3d(-50%, -50%, 0) scale(0.85);
-  }
-
   50% {
-    opacity: 0.95;
-    transform: translate3d(-50%, -50%, 0) scale(1.18);
+    opacity: 0.35;
   }
 }
 
-.samvad-diamond-anim-4 {
-  animation: samvad-diamond-float-4 8.5s ease-in-out 0.5s infinite;
-  will-change: opacity, transform;
-}
-
-@keyframes samvad-diamond-float-5 {
-  0% {
-    opacity: 0.2;
-    transform: translate3d(-50%, -50%, 0) scale(0.88);
-  }
-
-  45% {
-    opacity: 0.9;
-    transform: translate3d(calc(-50% - 16px), calc(-50% + 12px), 0) scale(1.08);
-  }
-
-  80% {
-    opacity: 0.4;
-    transform: translate3d(calc(-50% - 6px), calc(-50% + 4px), 0) scale(0.92);
-  }
-
-  100% {
-    opacity: 0.2;
-    transform: translate3d(-50%, -50%, 0) scale(0.88);
-  }
-}
-
-.samvad-diamond-anim-5 {
-  animation: samvad-diamond-float-5 14s ease-in-out 2s infinite;
-  will-change: opacity, transform;
-}
-
-@keyframes samvad-diamond-float-6 {
-
-  0%,
-  100% {
-    opacity: 0.15;
-    transform: translate3d(-50%, -50%, 0) scale(0.8);
-  }
-
-  50% {
-    opacity: 0.85;
-    transform: translate3d(-50%, -50%, 0) scale(1.1);
-  }
-}
-
-.samvad-diamond-anim-6 {
-  animation: samvad-diamond-float-6 17s ease-in-out 4.5s infinite;
-  will-change: opacity, transform;
+.samvad-grid-breathing {
+  animation: samvad-grid-breathe 6s ease-in-out infinite;
+  will-change: opacity;
 }
 
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
-
-  .samvad-intersection-pulse,
-  .samvad-diamond-anim-1,
-  .samvad-diamond-anim-2,
-  .samvad-diamond-anim-3,
-  .samvad-diamond-anim-4,
-  .samvad-diamond-anim-5,
-  .samvad-diamond-anim-6 {
+  .samvad-grid-breathing {
     animation: none !important;
-    opacity: 0.5 !important;
-    transform: translate(-50%, -50%) scale(1) !important;
+    opacity: 0.85 !important;
   }
 }

@@ -16,14 +16,14 @@ from app.core.errors import ConfigurationError, SpeechProcessingError
 # Default speaker per language for bulbul:v3
 DEFAULT_SPEAKERS: dict[str, str] = {
     "hi-IN": "aditya",
-    "en-IN": "aditi_en_stories",
-    "ta-IN": "gokul_ta_narration",
-    "te-IN": "kavitha_te_narration",
-    "bn-IN": "arnab_bn_conversation",
-    "mr-IN": "mrunal_mr_narration",
-    "kn-IN": "chetan_kn_conversation",
-    "gu-IN": "bhavik_gu_conversation",
-    "pa-IN": "harpreet_pa_narration",
+    "en-IN": "aditya",
+    "ta-IN": "gokul",
+    "te-IN": "kavitha",
+    "bn-IN": "aditya",
+    "mr-IN": "soham",
+    "kn-IN": "kavitha",
+    "gu-IN": "aditya",
+    "pa-IN": "aditya",
 }
 
 LANG_MAP: dict[str, str] = {
@@ -65,12 +65,16 @@ class SarvamTTSProvider:
         if not text.strip():
             raise SpeechProcessingError("Text cannot be empty for speech synthesis.")
 
-        # Clean citations like [1], [2] before speaking so voice reads naturally
+        # Clean citations like [1], [2] and Markdown formatting before speaking
         import re
-        clean_text = re.sub(r"\[\d+\]", "", text).strip()
-        # Limit text length per synthesis chunk to ~500 chars for responsive streaming
-        if len(clean_text) > 500:
-            clean_text = clean_text[:500]
+        clean_text = re.sub(r"\[\d+\]", "", text)
+        clean_text = re.sub(r"[*#`_~>]", " ", clean_text)
+        clean_text = re.sub(r"https?://\S+", "", clean_text)
+        clean_text = re.sub(r"\s+", " ", clean_text).strip()
+
+        # Limit text length per synthesis chunk for responsive audio generation
+        if len(clean_text) > 1000:
+            clean_text = clean_text[:1000]
 
         lang_code = LANG_MAP.get(language or "", "hi-IN" if any("\u0900" <= c <= "\u097F" for c in clean_text) else "en-IN")
         selected_speaker = speaker or DEFAULT_SPEAKERS.get(lang_code, "aditya")

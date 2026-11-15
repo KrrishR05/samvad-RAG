@@ -259,9 +259,9 @@ export function AppShell({
         )}
       </div>
 
-      {/* Live Capability Footer + Theme Toggle */}
-      <div className="p-3 border-t border-[var(--border-subtle)] space-y-2.5">
-        <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] px-2.5 py-2 space-y-1">
+      {/* Live Capability Footer + Theme Toggle — height matched to QueryComposer (124px) for aligned architectural grid line */}
+      <div className="h-[124px] shrink-0 px-3 py-2.5 border-t border-[var(--border-subtle)] flex flex-col justify-between">
+        <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] px-2.5 py-1.5 space-y-0.5">
           <div className="flex items-center justify-between text-[11px]">
             <span className="flex items-center gap-1.5 text-[var(--text-secondary)]">
               <span
@@ -273,7 +273,7 @@ export function AppShell({
                     : "bg-[var(--status-error)]"
                 }`}
               />
-              <span>
+              <span className="font-medium">
                 {backendOnline === null
                   ? "Checking API..."
                   : backendOnline
@@ -289,18 +289,34 @@ export function AppShell({
           </div>
           {status && (
             <div className="flex items-center justify-between text-[10px] font-mono-tech">
-              <span
-                className={
-                  status.llm_configured
-                    ? "text-[var(--status-success)]"
-                    : "text-[var(--status-warning)]"
-                }
-              >
-                {status.llm_configured
-                  ? `${status.llm_provider || "llm"}:${status.llm_model}`
-                  : "LLM unconfigured"}
-              </span>
-              <span className="text-[var(--text-muted)]">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                <span
+                  className={
+                    status.llm_configured
+                      ? "text-[var(--status-success)] font-medium"
+                      : "text-[var(--status-warning)]"
+                  }
+                  title={`LLM Generator: ${status.llm_provider || "unknown"} (${status.llm_model || "unknown"})`}
+                >
+                  {status.llm_configured
+                    ? status.llm_provider === "gemini"
+                      ? "gemini-flash"
+                      : `${status.llm_provider}`
+                    : "llm:off"}
+                </span>
+                {status.stt_configured && (
+                  <>
+                    <span className="text-[var(--text-muted)] opacity-60">·</span>
+                    <span
+                      className="text-[var(--accent)] font-medium"
+                      title="Voice Engine: Sarvam AI (Saaras STT + Bulbul TTS)"
+                    >
+                      sarvam-voice
+                    </span>
+                  </>
+                )}
+              </div>
+              <span className="text-[var(--text-muted)] shrink-0 ml-1.5">
                 {status.embedding_dimension}d
               </span>
             </div>

@@ -35,9 +35,9 @@ const SESSIONS_KEY = "samvad_sessions_v1";
 const PREFS_KEY = "samvad_workbench_prefs_v1";
 
 const STARTER_PROMPTS = [
-  "Summarize the key claims across my indexed documents with citations.",
-  "Compare multilingual passages mentioning technology and public infrastructure.",
-  "What gaps or limitations exist in the currently indexed corpus?",
+  "What is SAMVAD and what are its core capabilities?",
+  "How does SAMVAD ground answers and enforce strict citations?",
+  "What multilingual Indic voice and hybrid retrieval features does SAMVAD support?",
 ];
 
 function createEmptySession(): ResearchSession {
@@ -496,10 +496,20 @@ export default function ResearchWorkspacePage() {
                       <button
                         key={prompt}
                         type="button"
-                        onClick={() => setComposerQuery(prompt)}
-                        className="text-left px-4 py-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] hover:bg-[var(--bg-surface)] hover:border-[var(--border-default)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                        onClick={() => {
+                          setComposerQuery(prompt);
+                          handleSubmitText({
+                            query: prompt,
+                            strategy: defaultStrategy,
+                            topK: 5,
+                          });
+                        }}
+                        className="group flex items-center justify-between text-left px-4 py-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-panel)] hover:bg-[var(--bg-surface)] hover:border-[var(--accent-border)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer shadow-xs"
                       >
-                        {prompt}
+                        <span>{prompt}</span>
+                        <span className="text-xs text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
+                          Run &rarr;
+                        </span>
                       </button>
                     ))}
                   </div>

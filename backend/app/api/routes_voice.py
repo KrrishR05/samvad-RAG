@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/v1", tags=["voice"])
 
 
 class SpeakRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000, description="Answer text to convert to speech")
+    text: str = Field(..., min_length=1, max_length=50000, description="Answer text to convert to speech")
     language: Optional[str] = Field(default=None, description="Language code (e.g. hi, en, ta)")
     speaker: Optional[str] = Field(default=None, description="Sarvam speaker name")
 

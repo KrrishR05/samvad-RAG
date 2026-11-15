@@ -112,13 +112,13 @@ export function QueryComposer({
   const isRecording = recState === "recording";
 
   return (
-    <div className="shrink-0 border-t border-[var(--border-subtle)] bg-[var(--bg-canvas)]/95 backdrop-blur-sm px-4 py-3.5">
+    <div className="shrink-0 min-h-[124px] border-t border-[var(--border-subtle)] bg-[var(--bg-canvas)]/95 backdrop-blur-sm px-4 py-2.5 flex flex-col justify-center">
       <form
         onSubmit={handleSubmit}
-        className="max-w-3xl mx-auto rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] focus-within:border-[var(--accent-border)] focus-within:shadow-[0_0_25px_rgba(167,139,250,0.12)] transition-all"
+        className="max-w-3xl mx-auto w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] focus-within:border-[var(--accent-border)] focus-within:shadow-[0_0_20px_rgba(167,139,250,0.1)] transition-all"
       >
         {isRecording && (
-          <div className="px-4 py-2 flex items-center justify-between text-xs border-b border-[var(--border-subtle)] bg-[var(--status-error-soft)] text-[var(--status-error)] rounded-t-xl">
+          <div className="px-4 py-1.5 flex items-center justify-between text-xs border-b border-[var(--border-subtle)] bg-[var(--status-error-soft)] text-[var(--status-error)] rounded-t-xl">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[var(--status-error)] animate-pulse" />
               <span className="font-medium font-mono-tech">Listening to microphone... speak now</span>
@@ -141,11 +141,11 @@ export function QueryComposer({
               ? "Listening... spoken words will appear here live as you talk."
               : "Ask a research question across your indexed documents..."
           }
-          className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-[14.5px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-60"
+          className="w-full resize-none bg-transparent px-3.5 pt-2 pb-1 text-[13.5px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-60"
         />
 
         {/* Bottom Utility Strip */}
-        <div className="px-3 pb-2.5 pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-subtle)]/60">
+        <div className="px-3 pb-1.5 pt-0.5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-subtle)]/60">
           <div className="flex flex-wrap items-center gap-1.5">
             {/* Retrieval Strategy Selector */}
             <div
@@ -158,7 +158,7 @@ export function QueryComposer({
                   key={s.value}
                   type="button"
                   onClick={() => setStrategyOverride(s.value)}
-                  className={`px-2 py-1 rounded text-[11px] font-mono-tech transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono-tech transition-colors cursor-pointer ${
                     strategy === s.value
                       ? "bg-[var(--accent)] text-[#0C1412] font-semibold shadow-xs"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -174,7 +174,7 @@ export function QueryComposer({
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               aria-label="Query language"
-              className="px-2 py-1 rounded-md text-[11px] font-mono-tech bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] focus:outline-none focus:border-[var(--accent-border)] cursor-pointer"
+              className="px-2 py-0.5 rounded-md text-[11px] font-mono-tech bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] focus:outline-none focus:border-[var(--accent-border)] cursor-pointer"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
@@ -188,7 +188,7 @@ export function QueryComposer({
               value={topK}
               onChange={(e) => setTopK(Number(e.target.value))}
               aria-label="Passages count"
-              className="px-2 py-1 rounded-md text-[11px] font-mono-tech bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] focus:outline-none focus:border-[var(--accent-border)] cursor-pointer"
+              className="px-2 py-0.5 rounded-md text-[11px] font-mono-tech bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] focus:outline-none focus:border-[var(--accent-border)] cursor-pointer"
             >
               <option value={3}>top-3</option>
               <option value={5}>top-5</option>
@@ -207,7 +207,7 @@ export function QueryComposer({
                   ? "Stop and submit voice query"
                   : "Record voice query (Phase 4 STT backend)"
               }
-              className={`relative p-2 rounded-lg border transition-colors cursor-pointer ${
+              className={`relative p-1.5 rounded-lg border transition-colors cursor-pointer ${
                 isRecording
                   ? "bg-[var(--status-error-soft)] border-[var(--status-error)]/40 text-[var(--status-error)]"
                   : "bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-default)]"
@@ -223,7 +223,7 @@ export function QueryComposer({
             <button
               type="submit"
               disabled={!query.trim() || disabled || isRecording}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent)] text-[#0C1412] hover:bg-[var(--accent-hover)] shadow-[0_0_15px_rgba(167,139,250,0.2)] disabled:opacity-35 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--accent)] text-[#0C1412] hover:bg-[var(--accent-hover)] shadow-[0_0_15px_rgba(167,139,250,0.2)] disabled:opacity-35 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95"
             >
               <span>Run</span>
               <SendIcon className="w-3.5 h-3.5" />
