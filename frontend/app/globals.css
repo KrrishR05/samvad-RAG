@@ -173,6 +173,101 @@ html[data-theme="light"] body {
  *  Confined strictly to the central conversation area
  * ============================================================ */
 
+/* Base Canvas Glow - Dark vs Light */
+.samvad-canvas-glow {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(18, 60, 50, 0.45) 0%, rgba(23, 59, 50, 0.18) 45%, rgba(12, 20, 18, 0) 75%),
+    radial-gradient(ellipse 55% 30% at 50% 0%, rgba(23, 59, 50, 0.22) 0%, rgba(12, 20, 18, 0) 65%);
+}
+
+html[data-theme="light"] .samvad-canvas-glow {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 100%, rgba(18, 60, 50, 0.08) 0%, rgba(45, 212, 191, 0.06) 45%, rgba(245, 249, 248, 0) 75%),
+    radial-gradient(ellipse 55% 30% at 50% 0%, rgba(124, 58, 237, 0.05) 0%, rgba(245, 249, 248, 0) 65%);
+}
+
+/* Technical Grid Lines - Dark vs Light */
+.samvad-canvas-grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(41, 68, 59, 0.32) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(41, 68, 59, 0.32) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.4) 88%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.4) 88%, transparent 100%);
+}
+
+html[data-theme="light"] .samvad-canvas-grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(18, 60, 50, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(18, 60, 50, 0.09) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.3) 88%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, #000 65%, rgba(0,0,0,0.3) 88%, transparent 100%);
+}
+
+/* Intersection Nodes - Dark vs Light */
+.samvad-node-teal {
+  background: #70B8A4;
+  box-shadow: 0 0 10px 2px rgba(112, 184, 164, 0.55);
+}
+
+html[data-theme="light"] .samvad-node-teal {
+  background: #0D9488 !important;
+  box-shadow: 0 0 8px 2px rgba(13, 148, 136, 0.35) !important;
+}
+
+.samvad-node-lavender {
+  background: #D8C9FF;
+  box-shadow: 0 0 8px 2px rgba(167, 139, 250, 0.45);
+}
+
+html[data-theme="light"] .samvad-node-lavender {
+  background: #7C3AED !important;
+  box-shadow: 0 0 8px 2px rgba(124, 58, 237, 0.3) !important;
+}
+
+/* Diamond Stars - Dark vs Light */
+.samvad-diamond-teal path {
+  fill: #70B8A4;
+}
+
+.samvad-diamond-teal {
+  filter: drop-shadow(0 0 7px rgba(112, 184, 164, 0.85));
+}
+
+html[data-theme="light"] .samvad-diamond-teal path {
+  fill: #0D9488;
+}
+
+html[data-theme="light"] .samvad-diamond-teal {
+  filter: drop-shadow(0 0 5px rgba(13, 148, 136, 0.45));
+}
+
+.samvad-diamond-lavender path {
+  fill: #D8C9FF;
+}
+
+.samvad-diamond-lavender {
+  filter: drop-shadow(0 0 7px rgba(167, 139, 250, 0.8));
+}
+
+html[data-theme="light"] .samvad-diamond-lavender path {
+  fill: #7C3AED;
+}
+
+html[data-theme="light"] .samvad-diamond-lavender {
+  filter: drop-shadow(0 0 5px rgba(124, 58, 237, 0.4));
+}
+
+/* Vertical Beam Trace */
+.samvad-vertical-beam {
+  background: linear-gradient(180deg, transparent 0%, rgba(112, 184, 164, 0.6) 50%, transparent 100%);
+}
+
+html[data-theme="light"] .samvad-vertical-beam {
+  background: linear-gradient(180deg, transparent 0%, rgba(13, 148, 136, 0.3) 50%, transparent 100%);
+}
+
 @keyframes samvad-intersect-pulse {
 
   0%,
