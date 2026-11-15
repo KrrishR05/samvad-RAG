@@ -78,10 +78,10 @@ export function ResearchMessage({
 
   return (
     <article
-      className={`rounded-xl border transition-colors ${
+      className={`rounded-xl border transition-colors shadow-sm ${
         isInspected
-          ? "border-[var(--border-strong)] bg-[var(--bg-panel)]"
-          : "border-[var(--border-subtle)] bg-[var(--bg-panel)]/70"
+          ? "border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-md"
+          : "border-[var(--border-subtle)] bg-[var(--bg-panel)]"
       }`}
     >
       {/* Query Strip */}
