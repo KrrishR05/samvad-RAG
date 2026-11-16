@@ -10,8 +10,10 @@ development. Phase 2+ will persist records to SQLite.
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections import deque
+from datetime import datetime, timezone
 from typing import Optional
 
 from app.analytics.percentiles import compute_stats
@@ -23,11 +25,13 @@ from app.schemas.analytics import (
     StageLatencyStats,
 )
 
+logger = logging.getLogger("samvad.analytics")
+
 DEFAULT_MAX_RECORDS = 10_000
 
 
 class MetricsStore:
-    """Thread-safe bounded in-memory metrics store."""
+    """Thread-safe bounded in-memory & database-backed metrics store."""
 
     def __init__(self, max_records: int = DEFAULT_MAX_RECORDS) -> None:
         if max_records <= 0:
@@ -35,11 +39,80 @@ class MetricsStore:
         self._max_records = max_records
         self._records: deque[LatencyRecord] = deque(maxlen=max_records)
         self._lock = threading.Lock()
+        self._load_from_db()
+
+    def _load_from_db(self) -> None:
+        """Hydrate recent records from the database on startup."""
+        try:
+            from app.db.connection import get_db
+            db = get_db()
+            rows = db.fetch_all(
+                "SELECT * FROM analytics_records ORDER BY timestamp DESC LIMIT 50"
+            )
+            rows.reverse()
+            for r in rows:
+                self._records.append(
+                    LatencyRecord(
+                        request_id=r["request_id"],
+                        query_id=r.get("query_id") or r["request_id"],
+                        timestamp=r["timestamp"],
+                        success=bool(r.get("success", 1)),
+                        strategy=r.get("strategy"),
+                        query_text=r.get("query_text"),
+                        chunks_retrieved=r.get("chunks_retrieved"),
+                        cached=bool(r.get("cached", 0)),
+                        stt_ms=r.get("stt_ms"),
+                        query_processing_ms=r.get("query_processing_ms"),
+                        embedding_ms=r.get("embedding_ms"),
+                        retrieval_ms=r.get("retrieval_ms"),
+                        reranking_ms=r.get("reranking_ms"),
+                        generation_ms=r.get("generation_ms"),
+                        guardrail_ms=r.get("guardrail_ms"),
+                        total_ms=r.get("total_ms"),
+                    )
+                )
+        except Exception as exc:
+            logger.debug("Database analytics hydration skipped: %s", exc)
 
     def record(self, entry: LatencyRecord) -> None:
-        """Append a latency record (evicting oldest if at capacity)."""
+        """Append a latency record in-memory and asynchronously persist to database."""
         with self._lock:
             self._records.append(entry)
+
+        try:
+            from app.db.connection import get_db
+            db = get_db()
+            db.execute(
+                """
+                INSERT INTO analytics_records (
+                    request_id, query_id, timestamp, success, strategy,
+                    query_text, chunks_retrieved, cached, stt_ms,
+                    query_processing_ms, embedding_ms, retrieval_ms,
+                    reranking_ms, generation_ms, guardrail_ms, total_ms
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (request_id) DO NOTHING;
+                """,
+                (
+                    entry.request_id,
+                    entry.query_id or entry.request_id,
+                    entry.timestamp or datetime.now(timezone.utc).isoformat(),
+                    1 if entry.success else 0,
+                    entry.strategy,
+                    entry.query_text,
+                    entry.chunks_retrieved,
+                    1 if entry.cached else 0,
+                    entry.stt_ms,
+                    entry.query_processing_ms,
+                    entry.embedding_ms,
+                    entry.retrieval_ms,
+                    entry.reranking_ms,
+                    entry.generation_ms,
+                    entry.guardrail_ms,
+                    entry.total_ms,
+                ),
+            )
+        except Exception as exc:
+            logger.debug("Database record persistence skipped: %s", exc)
 
     def clear(self) -> None:
         """Remove all stored latency records."""

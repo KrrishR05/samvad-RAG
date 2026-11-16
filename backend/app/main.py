@@ -39,8 +39,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.environment.value,
         settings.app_version,
     )
+    from app.db.connection import get_db
+    from app.db.schema import init_database_tables
+    db = get_db()
+    init_database_tables(db)
+
     await get_runtime().ensure_indexes_ready()
     yield
+    db.close()
     logger.info("SAMVAD API shutting down.")
 
 

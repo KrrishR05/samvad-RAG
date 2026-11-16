@@ -12,16 +12,17 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-import sqlite3
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Generator, Optional
+from typing import Any, Generator, Optional, Union
 
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.db.connection import DBConnectionWrapper, DatabaseManager, get_db
+from app.db.schema import init_database_tables
 
 
 class UserRecord(BaseModel):
@@ -37,74 +38,35 @@ class UserRecord(BaseModel):
 
 
 class AuthStore:
-    """Manages SQLite storage for users and user session tokens."""
+    """Manages PostgreSQL and SQLite storage for users and user session tokens."""
 
-    def __init__(self, db_path: Optional[Path] = None) -> None:
-        if db_path is None:
-            settings = get_settings()
-            db_path = Path(settings.sqlite_db_path)
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(
+        self,
+        db_path: Optional[Path] = None,
+        db: Optional[DatabaseManager] = None,
+    ) -> None:
+        if db is not None:
+            self.db = db
+        elif db_path is not None and not get_settings().database_url:
+            self.db = DatabaseManager(sqlite_db_path=db_path)
+        else:
+            self.db = get_db()
+        self.db_path = self.db.sqlite_db_path
         self._init_db()
 
     @contextmanager
-    def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
-        conn = sqlite3.connect(self.db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON;")
-        conn.execute("PRAGMA journal_mode = WAL;")
-        try:
+    def _get_connection(self) -> Generator[DBConnectionWrapper, None, None]:
+        with self.db.connection() as conn:
             yield conn
-        finally:
-            conn.close()
 
     def _init_db(self) -> None:
+        init_database_tables(self.db)
+
+        # Seed default demo/admin user "Krrish" if empty so the app has instant out-of-the-box identity
         with self._get_connection() as conn:
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    id TEXT PRIMARY KEY,
-                    email TEXT UNIQUE NOT NULL,
-                    name TEXT NOT NULL,
-                    password_hash TEXT,
-                    salt TEXT,
-                    provider TEXT NOT NULL DEFAULT 'email',
-                    google_id TEXT,
-                    avatar_url TEXT,
-                    plan TEXT NOT NULL DEFAULT 'free',
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-                CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-
-                CREATE TABLE IF NOT EXISTS sessions (
-                    token TEXT PRIMARY KEY,
-                    user_id TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL,
-                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-
-                CREATE TABLE IF NOT EXISTS pro_waitlist (
-                    id TEXT PRIMARY KEY,
-                    email TEXT UNIQUE NOT NULL,
-                    name TEXT,
-                    user_id TEXT,
-                    created_at TEXT NOT NULL,
-                    notified INTEGER DEFAULT 0
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_waitlist_email ON pro_waitlist(email);
-                """
-            )
-
-            # Seed default demo/admin user "Krrish" if empty so the app has instant out-of-the-box identity
-            cursor = conn.execute("SELECT COUNT(*) FROM users")
-            if cursor.fetchone()[0] == 0:
+            row = conn.execute("SELECT COUNT(*) as cnt FROM users").fetchone()
+            count = row["cnt"] if isinstance(row, dict) or hasattr(row, "__getitem__") else row[0]
+            if count == 0:
                 now = datetime.now(timezone.utc).isoformat()
                 salt = secrets.token_hex(16)
                 default_hash = self.hash_password("Samvad@2026", salt)

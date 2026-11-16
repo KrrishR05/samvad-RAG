@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   deleteDocument,
@@ -84,11 +85,16 @@ export default function DocumentsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Document Chunk Inspection Drawer
+  const [mounted, setMounted] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentRecord | null>(null);
   const [inspectChunks, setInspectChunks] = useState<ChunkItem[]>([]);
   const [inspectLoading, setInspectLoading] = useState(false);
   const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
   const [inspectFilter, setInspectFilter] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close inspector on Escape key
   useEffect(() => {
@@ -652,7 +658,10 @@ The propulsion module continues to operate in lunar orbit carrying the SHAPE (Sp
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleInspectDoc(doc)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleInspectDoc(doc);
+                              }}
                               className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-border)] transition-colors cursor-pointer"
                               title="Inspect document chunks and provenance"
                             >
@@ -706,202 +715,204 @@ The propulsion module continues to operate in lunar orbit carrying the SHAPE (Sp
               </div>
             )}
           </section>
+        </div>
+      </main>
 
-          {/* SLIDE-OVER DOCUMENT CHUNK INSPECTION DRAWER */}
-          {selectedDoc && (
-            <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
-              {/* Dark Blur Backdrop */}
-              <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
-                onClick={() => setSelectedDoc(null)}
-                aria-hidden="true"
-              />
+      {/* SLIDE-OVER DOCUMENT CHUNK INSPECTION DRAWER (Rendered via Portal to document.body) */}
+      {mounted &&
+        selectedDoc &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] overflow-hidden flex justify-end">
+            {/* Dark Blur Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              onClick={() => setSelectedDoc(null)}
+              aria-hidden="true"
+            />
 
-              {/* Drawer Container */}
-              <div
-                className="relative w-full max-w-2xl bg-[var(--bg-panel)] border-l border-[var(--border-subtle)] shadow-2xl flex flex-col h-full z-10 animate-in slide-in-from-right duration-300"
-                role="dialog"
-                aria-modal="true"
-              >
-                {/* Drawer Top Header */}
-                <div className="p-5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/40 flex items-start justify-between gap-4">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] font-bold uppercase tracking-wider">
-                        CHUNK INSPECTOR
-                      </span>
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-full font-mono-tech text-[10px] font-semibold border ${docStatusBadge(
-                          selectedDoc.status
-                        )}`}
-                      >
-                        {selectedDoc.status}
-                      </span>
-                    </div>
-                    <h3
-                      className="font-display font-bold text-lg text-[var(--text-primary)] truncate"
-                      title={selectedDoc.filename}
-                    >
-                      {selectedDoc.filename}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono-tech text-[var(--text-muted)]">
-                      <span>
-                        ID:{" "}
-                        <code className="text-[var(--text-secondary)]">
-                          {selectedDoc.doc_id.slice(0, 16)}...
-                        </code>
-                      </span>
-                      <span>&bull;</span>
-                      <span className="font-semibold text-[var(--text-primary)]">
-                        {selectedDoc.chunk_count} Chunks
-                      </span>
-                      <span>&bull;</span>
-                      <span>Lang: {selectedDoc.language || "AUTO"}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Link
-                      href={`/?q=${encodeURIComponent(
-                        `Summarize ${selectedDoc.filename}`
+            {/* Drawer Container */}
+            <div
+              className="relative w-full max-w-2xl bg-[var(--bg-panel)] border-l border-[var(--border-subtle)] shadow-2xl flex flex-col h-full z-10 transition-transform duration-300 ease-out"
+              role="dialog"
+              aria-modal="true"
+            >
+              {/* Drawer Top Header */}
+              <div className="p-5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/40 flex items-start justify-between gap-4">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] font-bold uppercase tracking-wider">
+                      CHUNK INSPECTOR
+                    </span>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full font-mono-tech text-[10px] font-semibold border ${docStatusBadge(
+                        selectedDoc.status
                       )}`}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--accent)] text-white hover:opacity-95 transition-opacity shadow-sm"
                     >
-                      Query in Workspace ↗
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDoc(null)}
-                      className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer text-lg leading-none"
-                      title="Close drawer (Esc)"
-                    >
-                      ✕
-                    </button>
+                      {selectedDoc.status}
+                    </span>
                   </div>
-                </div>
-
-                {/* Sub-bar: Search chunks & token info */}
-                <div className="p-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/20 flex items-center justify-between gap-3">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      placeholder="Filter chunks in this document..."
-                      value={inspectFilter}
-                      onChange={(e) => setInspectFilter(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent-border)] focus:outline-none text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                    />
-                    <svg
-                      className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                  </div>
-                  <span className="text-[11px] font-mono-tech text-[var(--text-muted)] shrink-0">
-                    {
-                      inspectChunks.filter((c) =>
-                        inspectFilter
-                          ? c.text
-                              .toLowerCase()
-                              .includes(inspectFilter.toLowerCase())
-                          : true
-                      ).length
-                    }{" "}
-                    of {inspectChunks.length} chunks
-                  </span>
-                </div>
-
-                {/* Chunks List Body */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
-                  {inspectLoading ? (
-                    <div className="py-20 text-center text-xs text-[var(--text-muted)] flex flex-col items-center justify-center gap-3">
-                      <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                      <span className="font-mono-tech">
-                        Loading parsed document chunks from SQLite store...
-                      </span>
-                    </div>
-                  ) : inspectChunks.length === 0 ? (
-                    <div className="py-16 text-center text-xs text-[var(--text-muted)] space-y-2">
-                      <p className="font-semibold text-sm text-[var(--text-secondary)]">
-                        No chunks found
-                      </p>
-                      <p>
-                        No chunks currently indexed for this document in the
-                        SQLite database.
-                      </p>
-                    </div>
-                  ) : (
-                    inspectChunks
-                      .filter((c) =>
-                        inspectFilter
-                          ? c.text
-                              .toLowerCase()
-                              .includes(inspectFilter.toLowerCase())
-                          : true
-                      )
-                      .map((chunk) => (
-                        <div
-                          key={chunk.chunk_id}
-                          className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2.5 text-xs shadow-xs hover:border-[var(--accent-border)]/50 transition-colors"
-                        >
-                          <div className="flex items-center justify-between text-[11px] font-mono-tech text-[var(--text-muted)] pb-2 border-b border-[var(--border-subtle)]/50">
-                            <span className="font-semibold text-[var(--accent)] flex items-center gap-1.5">
-                              <span className="px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)]">
-                                #{chunk.chunk_index + 1}
-                              </span>
-                              <span className="text-[var(--text-muted)] text-[10px]">
-                                ({chunk.chunk_id.slice(0, 12)}...)
-                              </span>
-                            </span>
-                            <div className="flex items-center gap-3">
-                              <span>{chunk.char_count} chars</span>
-                              <span>~{chunk.token_count} tokens</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  copyChunk(chunk.chunk_id, chunk.text)
-                                }
-                                className="px-2 py-0.5 rounded text-[10.5px] font-medium bg-[var(--bg-panel)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
-                              >
-                                {copiedChunkId === chunk.chunk_id
-                                  ? "✓ Copied"
-                                  : "Copy"}
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap font-sans text-xs select-text">
-                            {chunk.text}
-                          </p>
-                        </div>
-                      ))
-                  )}
-                </div>
-
-                {/* Drawer Footer */}
-                <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]/30 flex items-center justify-between text-xs font-mono-tech text-[var(--text-muted)]">
-                  <span
-                    className="truncate max-w-xs"
-                    title={selectedDoc.content_hash}
+                  <h3
+                    className="font-display font-bold text-lg text-[var(--text-primary)] truncate"
+                    title={selectedDoc.filename}
                   >
-                    SHA-256: {selectedDoc.content_hash.slice(0, 16)}...
-                  </span>
+                    {selectedDoc.filename}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono-tech text-[var(--text-muted)]">
+                    <span>
+                      ID:{" "}
+                      <code className="text-[var(--text-secondary)]">
+                        {selectedDoc.doc_id.slice(0, 16)}...
+                      </code>
+                    </span>
+                    <span>&bull;</span>
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      {selectedDoc.chunk_count} Chunks
+                    </span>
+                    <span>&bull;</span>
+                    <span>Lang: {selectedDoc.language || "AUTO"}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href={`/?q=${encodeURIComponent(
+                      `Summarize ${selectedDoc.filename}`
+                    )}`}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--accent)] text-white hover:opacity-95 transition-opacity shadow-sm"
+                  >
+                    Query in Workspace ↗
+                  </Link>
                   <button
                     type="button"
                     onClick={() => setSelectedDoc(null)}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-border)] transition-colors cursor-pointer text-xs font-sans font-medium"
+                    className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer text-lg leading-none"
+                    title="Close drawer (Esc)"
                   >
-                    Close
+                    ✕
                   </button>
                 </div>
               </div>
+
+              {/* Sub-bar: Search chunks & token info */}
+              <div className="p-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/20 flex items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Filter chunks in this document..."
+                    value={inspectFilter}
+                    onChange={(e) => setInspectFilter(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent-border)] focus:outline-none text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                  />
+                  <svg
+                    className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </div>
+                <span className="text-[11px] font-mono-tech text-[var(--text-muted)] shrink-0">
+                  {
+                    inspectChunks.filter((c) =>
+                      inspectFilter
+                        ? c.text
+                            .toLowerCase()
+                            .includes(inspectFilter.toLowerCase())
+                        : true
+                    ).length
+                  }{" "}
+                  of {inspectChunks.length} chunks
+                </span>
+              </div>
+
+              {/* Chunks List Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
+                {inspectLoading ? (
+                  <div className="py-20 text-center text-xs text-[var(--text-muted)] flex flex-col items-center justify-center gap-3">
+                    <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                    <span className="font-mono-tech">
+                      Loading parsed document chunks from database store...
+                    </span>
+                  </div>
+                ) : inspectChunks.length === 0 ? (
+                  <div className="py-16 text-center text-xs text-[var(--text-muted)] space-y-2">
+                    <p className="font-semibold text-sm text-[var(--text-secondary)]">
+                      No chunks found
+                    </p>
+                    <p>
+                      No chunks currently indexed for this document in the database.
+                    </p>
+                  </div>
+                ) : (
+                  inspectChunks
+                    .filter((c) =>
+                      inspectFilter
+                        ? c.text
+                            .toLowerCase()
+                            .includes(inspectFilter.toLowerCase())
+                        : true
+                    )
+                    .map((chunk) => (
+                      <div
+                        key={chunk.chunk_id}
+                        className="p-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2.5 text-xs shadow-xs hover:border-[var(--accent-border)]/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between text-[11px] font-mono-tech text-[var(--text-muted)] pb-2 border-b border-[var(--border-subtle)]/50">
+                          <span className="font-semibold text-[var(--accent)] flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)]">
+                              #{chunk.chunk_index + 1}
+                            </span>
+                            <span className="text-[var(--text-muted)] text-[10px]">
+                              ({chunk.chunk_id.slice(0, 12)}...)
+                            </span>
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <span>{chunk.char_count} chars</span>
+                            <span>~{chunk.token_count} tokens</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                copyChunk(chunk.chunk_id, chunk.text)
+                              }
+                              className="px-2 py-0.5 rounded text-[10.5px] font-medium bg-[var(--bg-panel)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
+                            >
+                              {copiedChunkId === chunk.chunk_id
+                                ? "✓ Copied"
+                                : "Copy"}
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap font-sans text-xs select-text">
+                          {chunk.text}
+                        </p>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              {/* Drawer Footer */}
+              <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]/30 flex items-center justify-between text-xs font-mono-tech text-[var(--text-muted)]">
+                <span
+                  className="truncate max-w-xs"
+                  title={selectedDoc.content_hash}
+                >
+                  SHA-256: {selectedDoc.content_hash.slice(0, 16)}...
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDoc(null)}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-border)] transition-colors cursor-pointer text-xs font-sans font-medium"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          )}
-        </div>
-      </main>
+          </div>,
+          document.body
+        )}
     </AppShell>
   );
 }

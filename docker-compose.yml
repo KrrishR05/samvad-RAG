@@ -1,16 +1,39 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: samvad-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: samvad
+      POSTGRES_USER: samvad_user
+      POSTGRES_PASSWORD: samvad_secret_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U samvad_user -d samvad"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://samvad_user:samvad_secret_password@postgres:5432/samvad
     env_file:
       - path: .env
         required: false
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
@@ -29,3 +52,7 @@ services:
     command: npm run dev
     depends_on:
       - backend
+
+volumes:
+  pgdata:
+    driver: local

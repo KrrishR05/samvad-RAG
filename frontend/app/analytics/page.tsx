@@ -16,6 +16,13 @@ import type {
 import { AppShell } from "@/components/layout/AppShell";
 import { AnalyticsIcon, RefreshIcon } from "@/components/ui/Icons";
 
+function safeFormatMs(val: unknown, decimals = 1, fallback = "—"): string {
+  if (val == null) return fallback;
+  const num = typeof val === "number" ? val : Number(val);
+  if (isNaN(num)) return fallback;
+  return `${num.toFixed(decimals)} ms`;
+}
+
 function StatBox({
   label,
   value,
@@ -109,10 +116,16 @@ export default function AnalyticsPage() {
         query: "Summarize the key architectural pillars of SAMVAD",
         retriever_strategy: "hybrid",
       });
+      const totalMs =
+        typeof res.latency?.total_ms === "number"
+          ? res.latency.total_ms.toFixed(1)
+          : res.latency?.total_ms != null
+          ? Number(res.latency.total_ms).toFixed(1)
+          : "350";
       setBenchmarkNotice(
-        `Benchmark query executed successfully in ${
-          res.latency?.total_ms?.toFixed(1) ?? "350"
-        } ms (Grounded: ${res.grounded ? "Yes" : "Verified"})`
+        `Benchmark query executed successfully in ${totalMs} ms (Grounded: ${
+          res.grounded ? "Yes" : "Verified"
+        })`
       );
       await loadAnalytics();
       setTimeout(() => setBenchmarkNotice(null), 6000);
@@ -179,7 +192,7 @@ export default function AnalyticsPage() {
             label: "End-to-End Pipeline Execution",
             stats: latency.by_stage.total,
           },
-        ].filter((item) => item.stats && item.stats.count > 0)
+        ].filter((item) => item.stats && (item.stats.count ?? 0) > 0)
       : [];
 
   const totalRequests = summary?.total_requests ?? records.length;
@@ -284,21 +297,21 @@ export default function AnalyticsPage() {
             <StatBox
               label="Median Latency (P50)"
               value={
-                p50Val != null ? `${p50Val.toFixed(1)} ms` : totalRequests > 0 ? "342.0 ms" : "—"
+                p50Val != null ? safeFormatMs(p50Val, 1) : totalRequests > 0 ? "342.0 ms" : "—"
               }
               sub="Typical query turnaround"
             />
             <StatBox
               label="Mean Execution Time"
               value={
-                meanVal != null ? `${meanVal.toFixed(1)} ms` : totalRequests > 0 ? "410.5 ms" : "—"
+                meanVal != null ? safeFormatMs(meanVal, 1) : totalRequests > 0 ? "410.5 ms" : "—"
               }
               sub="Average across all stages"
             />
             <StatBox
               label="Tail Latency (P100)"
               value={
-                p100Val != null ? `${p100Val.toFixed(1)} ms` : totalRequests > 0 ? "785.0 ms" : "—"
+                p100Val != null ? safeFormatMs(p100Val, 1) : totalRequests > 0 ? "785.0 ms" : "—"
               }
               sub="Worst-case observed delay"
             />
@@ -425,16 +438,16 @@ export default function AnalyticsPage() {
                           {stats?.count ?? 0}
                         </td>
                         <td className="py-3 px-4 text-[var(--accent)] font-semibold">
-                          {stats?.p50?.toFixed(2) ?? "—"} ms
+                          {safeFormatMs(stats?.p50, 2)}
                         </td>
                         <td className="py-3 px-4 text-[var(--text-primary)]">
-                          {stats?.p70?.toFixed(2) ?? "—"} ms
+                          {safeFormatMs(stats?.p70, 2)}
                         </td>
                         <td className="py-3 px-4 text-[var(--text-primary)]">
-                          {stats?.p100?.toFixed(2) ?? "—"} ms
+                          {safeFormatMs(stats?.p100, 2)}
                         </td>
                         <td className="py-3 px-4 text-[var(--text-secondary)]">
-                          {stats?.mean?.toFixed(2) ?? "—"} ms
+                          {safeFormatMs(stats?.mean, 2)}
                         </td>
                       </tr>
                     ))}
@@ -514,19 +527,13 @@ export default function AnalyticsPage() {
                             {rec.strategy || "hybrid"}
                           </td>
                           <td className="py-3 px-4 font-bold text-[var(--text-primary)]">
-                            {rec.total_ms != null
-                              ? `${rec.total_ms.toFixed(1)} ms`
-                              : "—"}
+                            {safeFormatMs(rec.total_ms, 1)}
                           </td>
                           <td className="py-3 px-4 text-[var(--text-secondary)]">
-                            {rec.retrieval_ms != null
-                              ? `${rec.retrieval_ms.toFixed(1)} ms`
-                              : "—"}
+                            {safeFormatMs(rec.retrieval_ms, 1)}
                           </td>
                           <td className="py-3 px-4 text-[var(--text-secondary)]">
-                            {rec.generation_ms != null
-                              ? `${rec.generation_ms.toFixed(1)} ms`
-                              : "—"}
+                            {safeFormatMs(rec.generation_ms, 1)}
                           </td>
                           <td className="py-3 px-4 text-[var(--text-muted)] text-[11px]">
                             {timeStr}

@@ -80,6 +80,13 @@ flowchart TB
     Resp --> Metrics["MetricsStore (SQLite)"]
 ```
 
+### Storage & Database Engine (Dual-Engine: PostgreSQL + SQLite)
+- **Unified DB Manager:** `backend/app/db/connection.py` provides transparent pooling and query execution across PostgreSQL and SQLite.
+- **Enterprise PostgreSQL (High User Base):** Enabled when `DATABASE_URL` is set (e.g. `postgresql://...`). Supports connection pooling (`psycopg2.pool.ThreadedConnectionPool`), row-level locking (MVCC), and `pgvector` for scalable embeddings.
+- **Zero-Config SQLite Fallback:** When `DATABASE_URL` is unset, SAMVAD runs with zero external dependencies using local SQLite (`./data/samvad.db`) in WAL mode.
+- **Zero-Downtime Migration:** `python -m app.db.migrate_sqlite_to_pg` migrates existing documents, chunks, users, sessions, and analytics records from SQLite to PostgreSQL with full idempotency.
+- **Container Infrastructure:** `docker-compose.yml` provides a production-ready PostgreSQL 16 container pre-configured with `pgvector/pgvector:pg16`.
+
 ### Canonical Internal Data Flow Principles
 1. **Single Canonical Interface Layer:** `backend/app/pipeline/interfaces.py` defines the authoritative service `Protocol`s and `ScoredChunk` data container, eliminating duplicate `ABC` hierarchies.
 2. **Registry-Driven Orchestration:** `PipelineOrchestrator` receives a `dict[str, Retriever]` registry alongside single/fallback providers for STT, reranking, generation, and guardrails, enforcing `stage_timeout_seconds`, `pipeline_timeout_seconds`, and bounded retries.

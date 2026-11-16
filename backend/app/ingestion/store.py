@@ -9,15 +9,17 @@ with full parent-document provenance.
 from __future__ import annotations
 
 import json
-import sqlite3
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field
 
+from app.core.config import get_settings
+from app.db.connection import DBConnectionWrapper, DatabaseManager, get_db
+from app.db.schema import init_database_tables
 from app.ingestion.chunker import DocumentChunk
 from app.schemas.pipeline import ChunkMetadata, ChunkStrategy
 
@@ -44,61 +46,36 @@ class DocumentRecord(BaseModel):
 
 
 class DocumentStore:
-    """SQLite-backed store for ingested documents and their chunks."""
+    """PostgreSQL and SQLite unified store for ingested documents and their chunks."""
 
-    def __init__(self, db_path: Path) -> None:
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(
+        self,
+        db_path: Optional[Path] = None,
+        db: Optional[DatabaseManager] = None,
+    ) -> None:
+        if db is not None:
+            self.db = db
+        elif db_path is not None and not get_settings().database_url:
+            self.db = DatabaseManager(sqlite_db_path=db_path)
+        else:
+            self.db = get_db()
+        self.db_path = self.db.sqlite_db_path
         self._init_schema()
 
-    def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON;")
-        return conn
+    def _connect(self):
+        return self.db.connection()
 
     def _init_schema(self) -> None:
-        with self._connect() as conn:
-            conn.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS documents (
-                    doc_id TEXT PRIMARY KEY,
-                    filename TEXT NOT NULL,
-                    content_hash TEXT NOT NULL UNIQUE,
-                    media_type TEXT NOT NULL,
-                    language TEXT,
-                    status TEXT NOT NULL,
-                    error_message TEXT,
-                    chunk_count INTEGER NOT NULL DEFAULT 0,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    metadata_json TEXT NOT NULL DEFAULT '{}'
-                );
-
-                CREATE TABLE IF NOT EXISTS chunks (
-                    chunk_id TEXT PRIMARY KEY,
-                    parent_document_id TEXT NOT NULL,
-                    text TEXT NOT NULL,
-                    language TEXT,
-                    chunk_strategy TEXT,
-                    chunk_index INTEGER,
-                    total_chunks INTEGER,
-                    char_count INTEGER,
-                    token_count INTEGER,
-                    extra_json TEXT NOT NULL DEFAULT '{}',
-                    FOREIGN KEY (parent_document_id) REFERENCES documents(doc_id) ON DELETE CASCADE
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_chunks_parent ON chunks(parent_document_id);
-                """
-            )
+        init_database_tables(self.db)
 
     @staticmethod
     def _now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()
 
     @staticmethod
-    def _row_to_doc(row: sqlite3.Row) -> DocumentRecord:
+    def _row_to_doc(row: Any) -> DocumentRecord:
+        meta_val = row["metadata_json"]
+        meta_dict = json.loads(meta_val) if isinstance(meta_val, str) else (meta_val or {})
         return DocumentRecord(
             doc_id=row["doc_id"],
             filename=row["filename"],
@@ -110,7 +87,7 @@ class DocumentStore:
             chunk_count=row["chunk_count"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
-            metadata=json.loads(row["metadata_json"]),
+            metadata=meta_dict,
         )
 
     def get_by_hash(self, content_hash: str) -> Optional[DocumentRecord]:
@@ -251,11 +228,16 @@ class DocumentStore:
 
         results: list[DocumentChunk] = []
         for row in rows:
-            strategy = (
-                ChunkStrategy(row["chunk_strategy"])
-                if row["chunk_strategy"]
-                else None
-            )
+            try:
+                strategy = (
+                    ChunkStrategy(row["chunk_strategy"])
+                    if row["chunk_strategy"]
+                    else None
+                )
+            except (ValueError, KeyError):
+                strategy = None
+            extra_val = row["extra_json"]
+            extra_dict = json.loads(extra_val) if isinstance(extra_val, str) else (extra_val or {})
             meta = ChunkMetadata(
                 chunk_id=row["chunk_id"],
                 parent_document_id=row["parent_document_id"],
@@ -265,7 +247,7 @@ class DocumentStore:
                 total_chunks=row["total_chunks"],
                 char_count=row["char_count"],
                 token_count=row["token_count"],
-                extra=json.loads(row["extra_json"]),
+                extra=extra_dict,
             )
             results.append(DocumentChunk(text=row["text"], metadata=meta))
         return results
@@ -279,11 +261,16 @@ class DocumentStore:
 
         results: list[DocumentChunk] = []
         for row in rows:
-            strategy = (
-                ChunkStrategy(row["chunk_strategy"])
-                if row["chunk_strategy"]
-                else None
-            )
+            try:
+                strategy = (
+                    ChunkStrategy(row["chunk_strategy"])
+                    if row["chunk_strategy"]
+                    else None
+                )
+            except (ValueError, KeyError):
+                strategy = None
+            extra_val = row["extra_json"]
+            extra_dict = json.loads(extra_val) if isinstance(extra_val, str) else (extra_val or {})
             meta = ChunkMetadata(
                 chunk_id=row["chunk_id"],
                 parent_document_id=row["parent_document_id"],
@@ -293,7 +280,7 @@ class DocumentStore:
                 total_chunks=row["total_chunks"],
                 char_count=row["char_count"],
                 token_count=row["token_count"],
-                extra=json.loads(row["extra_json"]),
+                extra=extra_dict,
             )
             results.append(DocumentChunk(text=row["text"], metadata=meta))
         return results

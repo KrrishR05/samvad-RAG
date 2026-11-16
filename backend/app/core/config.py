@@ -105,7 +105,15 @@ class Settings(BaseSettings):
         description="Embedding model identifier",
     )
 
-    # --- Storage & Vector Database ---
+    # --- Storage & Database ---
+    database_url: Optional[str] = Field(
+        default=None,
+        description=(
+            "Primary database connection string. If set to a PostgreSQL URI "
+            "(e.g. postgresql://user:pass@localhost:5432/samvad), PostgreSQL is used. "
+            "If omitted, SAMVAD falls back to local SQLite (sqlite_db_path)."
+        ),
+    )
     sqlite_db_path: str = Field(
         default="./data/samvad.db",
         description="Path to the local SQLite database for document and chunk metadata",

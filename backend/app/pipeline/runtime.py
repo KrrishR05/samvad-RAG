@@ -73,7 +73,7 @@ class SamvadRuntime:
     ) -> None:
         self.settings = settings or get_settings()
         self.metrics_store = metrics_store or get_metrics_store()
-        self.document_store = DocumentStore(Path(self.settings.sqlite_db_path))
+        self.document_store = DocumentStore()
 
         self.embedding_provider: EmbeddingProvider = (
             embedding_provider or create_embedding_provider(self.settings)
