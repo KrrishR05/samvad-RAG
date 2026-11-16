@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  startTransition,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import type {
   GoogleAuthPayload,
   LoginPayload,
@@ -64,8 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (storedToken && storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setToken(storedToken);
+        startTransition(() => {
+          setUser(parsedUser);
+          setToken(storedToken);
+        });
 
         // Validate token against live backend
         getCurrentUser(storedToken)
@@ -78,10 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
       } else {
         // Fallback default user for instant high-class UX
-        setUser(DEFAULT_USER);
+        startTransition(() => setUser(DEFAULT_USER));
       }
     } catch {
-      setUser(DEFAULT_USER);
+      startTransition(() => setUser(DEFAULT_USER));
     } finally {
       setIsLoading(false);
     }
@@ -198,4 +206,3 @@ export function useAuth() {
   }
   return context;
 }
-
