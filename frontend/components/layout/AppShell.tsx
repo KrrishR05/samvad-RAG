@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { getPipelineStatus, healthCheck } from "@/lib/api/client";
 import type { PipelineStatusResponse } from "@/types/api";
 import { useTheme } from "@/components/layout/ThemeProvider";
+import { UserAccountMenu } from "@/components/layout/UserAccountMenu";
+import { AuthModal } from "@/components/auth/AuthModal";
 import {
   AnalyticsIcon,
   DocumentsIcon,
@@ -259,8 +261,8 @@ export function AppShell({
         )}
       </div>
 
-      {/* Live Capability Footer + Theme Toggle — height matched to QueryComposer (124px) for aligned architectural grid line */}
-      <div className="h-[124px] shrink-0 px-3 py-2.5 border-t border-[var(--border-subtle)] flex flex-col justify-between">
+      {/* Live Capability Footer + User Account (ChatGPT Style) & Theme Toggle */}
+      <div className="shrink-0 px-3 py-2 border-t border-[var(--border-subtle)] flex flex-col gap-2 bg-[var(--bg-panel)]">
         <div className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] px-2.5 py-1.5 space-y-0.5">
           <div className="flex items-center justify-between text-[11px]">
             <span className="flex items-center gap-1.5 text-[var(--text-secondary)]">
@@ -323,18 +325,8 @@ export function AppShell({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
-        >
-          <span>{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
-          {theme === "dark" ? (
-            <MoonIcon className="w-3.5 h-3.5" />
-          ) : (
-            <SunIcon className="w-3.5 h-3.5" />
-          )}
-        </button>
+        {/* User Account Menu with popover + small theme toggle */}
+        <UserAccountMenu />
       </div>
     </div>
   );
@@ -386,7 +378,7 @@ export function AppShell({
                 <span className="font-display font-bold text-xs tracking-tight text-[var(--text-primary)]">
                   SAMVAD
                 </span>
-                <span className="text-[10px] text-[var(--text-muted)]">
+                <span className="text-[10px] font-sans text-[var(--accent)] font-medium">
                   | संवाद
                 </span>
               </Link>
@@ -402,6 +394,9 @@ export function AppShell({
         {/* Body */}
         <div className="flex-1 min-h-0 flex overflow-hidden">{children}</div>
       </div>
+
+      {/* Global Authentication Modal */}
+      <AuthModal />
     </div>
   );
 }

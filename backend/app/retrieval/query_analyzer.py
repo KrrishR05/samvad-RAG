@@ -58,8 +58,12 @@ INTENSITY_PATTERNS = [
 SAMVAD_PATTERNS = [
     r"\b(samvad|samvaad)\b",
     r"(?:^|[\s\W])(संवाद)(?:$|[\s\W])",
-    r"\b(who are you|what are you|what is this platform|about yourself|what can you do)\b",
-    r"(?:^|[\s\W])(तुम कौन हो|आप कौन हैं|यह क्या है|अपने बारे में)(?:$|[\s\W])",
+    r"^(hi|hey|hello|namaste|namaskar|greetings|howdy|hola|yo|help)([\s!?.,;:]|$)",
+    r"\b(good\s+(morning|afternoon|evening|day))\b",
+    r"\b(how\s+are\s+you|who\s+are\s+you|what\s+are\s+you|about\s+yourself|what\s+can\s+you\s+do|introduce\s+yourself|help\s+me)\b",
+    r"\b(how\s+does\s+(this|samvad)\s+work|what\s+is\s+this\s+platform)\b",
+    r"(?:^|[\s\W])(नमस्ते|नमस्कार|प्रणाम|हैलो|हाय|केम\s*छो|வணக்கம்|నమస్కారం|নমস্কার)(?:$|[\s\W])",
+    r"(?:^|[\s\W])(तुम\s+कौन\s+हो|आप\s+कौन\s+हैं|यह\s+क्या\s+है|अपने\s+बारे\s+में|क्या\s+कर\s+सकते\s+हो|मदद)(?:$|[\s\W])",
 ]
 
 

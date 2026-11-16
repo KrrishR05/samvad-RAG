@@ -519,6 +519,10 @@ class PipelineOrchestrator:
             query=analyzed.processed_text,
         )
 
+        if about_samvad:
+            ranked_chunks = [c for c in ranked_chunks if c.chunk_id != SAMVAD_CANONICAL_CHUNK.chunk_id]
+            ranked_chunks.insert(0, SAMVAD_CANONICAL_CHUNK)
+
         # 5. Relevance & Confidence Check
         await _begin_stage(PipelineStage.CONFIDENCE_CHECK)
         if self.relevance_guard is not None and ranked_chunks and not about_samvad:

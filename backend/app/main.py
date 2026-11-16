@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.middleware import ApiKeyMiddleware, RateLimiterMiddleware
 from app.api.routes_analytics import router as analytics_router
+from app.api.routes_auth import router as auth_router
 from app.api.routes_documents import router as documents_router
 from app.api.routes_health import router as health_router
 from app.api.routes_query import router as query_router
@@ -62,7 +63,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-API-Key"],
     )
 
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
 
     # --- Routers ---
     app.include_router(health_router)
+    app.include_router(auth_router)
     app.include_router(query_router)
     app.include_router(voice_router)
     app.include_router(analytics_router)

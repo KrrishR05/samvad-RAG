@@ -47,7 +47,7 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
 
         # Public endpoints bypass authentication
         path = request.url.path.rstrip("/") or "/"
-        if path in PUBLIC_PATHS:
+        if path in PUBLIC_PATHS or path.startswith("/api/v1/auth"):
             return await call_next(request)
 
         expected_key = self.settings.api_key
