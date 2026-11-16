@@ -85,7 +85,10 @@ export default function AnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    loadAnalytics();
+    const id = window.setTimeout(() => {
+      void loadAnalytics();
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [loadAnalytics]);
 
   // Auto-refresh interval

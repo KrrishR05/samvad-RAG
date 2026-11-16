@@ -120,7 +120,10 @@ export default function DocumentsPage() {
   }, []);
 
   useEffect(() => {
-    fetchDocs();
+    const id = window.setTimeout(() => {
+      void fetchDocs();
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [fetchDocs]);
 
   const handleFiles = async (files: FileList | null) => {

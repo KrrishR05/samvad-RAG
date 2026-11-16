@@ -49,13 +49,13 @@ function SettingsContent() {
   useEffect(() => {
     const tabParam = searchParams.get("tab") as SettingsTab;
     if (tabParam && ["general", "account", "plan", "diagnostics"].includes(tabParam)) {
-      setActiveTab(tabParam);
+      startTransition(() => setActiveTab(tabParam));
     }
   }, [searchParams]);
 
   useEffect(() => {
     if (user?.name) {
-      setEditName(user.name);
+      startTransition(() => setEditName(user.name));
     }
     if (user?.email) {
       getWaitlistStatus(user.email)
