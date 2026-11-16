@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { startTransition, Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getPipelineStatus, healthCheck } from "@/lib/api/client";
 import type {
@@ -44,13 +44,13 @@ function SettingsContent() {
   useEffect(() => {
     const tabParam = searchParams.get("tab") as SettingsTab;
     if (tabParam && ["general", "account", "plan", "diagnostics"].includes(tabParam)) {
-      setActiveTab(tabParam);
+      startTransition(() => setActiveTab(tabParam));
     }
   }, [searchParams]);
 
   useEffect(() => {
     if (user?.name) {
-      setEditName(user.name);
+      startTransition(() => setEditName(user.name));
     }
   }, [user]);
 
