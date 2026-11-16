@@ -47,3 +47,17 @@ export interface ProfileUpdatePayload {
   avatar_url?: string;
 }
 
+export interface WaitlistResponse {
+  status: "joined" | "already_joined";
+  email: string;
+  position: number;
+  email_sent: boolean;
+  message: string;
+}
+
+export interface WaitlistStatusResponse {
+  on_waitlist: boolean;
+  email: string;
+  position?: number | null;
+}
+

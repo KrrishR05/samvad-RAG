@@ -62,16 +62,25 @@ def test_auth_signup_and_login_flow(client: TestClient):
     )
     assert bad_login.status_code == 401
 
-    # 6. Update profile
+    # 6. Update profile name succeeds
     patch_res = client.patch(
         "/api/v1/auth/profile",
-        json={"name": "Dr. Vikram Sarabhai", "plan": "pro"},
+        json={"name": "Dr. Vikram Sarabhai"},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert patch_res.status_code == 200
     patch_data = patch_res.json()
     assert patch_data["user"]["name"] == "Dr. Vikram Sarabhai"
-    assert patch_data["user"]["plan"] == "pro"
+    assert patch_data["user"]["plan"] == "free"
+
+    # 6b. Attempting to set pro plan is rejected (all users are free during upcoming rollout)
+    pro_attempt = client.patch(
+        "/api/v1/auth/profile",
+        json={"plan": "pro"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert pro_attempt.status_code == 400
+    assert "upcoming" in pro_attempt.json()["detail"].lower()
 
     # 7. Logout
     logout_res = client.post(
@@ -113,3 +122,38 @@ def test_auth_google_flow(client: TestClient):
     me_res = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me_res.status_code == 200
     assert me_res.json()["user"]["name"] == name
+
+
+def test_pro_waitlist_registration_and_status(client: TestClient):
+    test_email = f"waitlist.{uuid.uuid4().hex[:8]}@samvad.ai"
+
+    # 1. Initially not on waitlist
+    status_before = client.get(f"/api/v1/auth/waitlist/status?email={test_email}")
+    assert status_before.status_code == 200
+    assert status_before.json()["on_waitlist"] is False
+
+    # 2. Join waitlist
+    join_res = client.post(
+        "/api/v1/auth/waitlist",
+        json={"email": test_email, "name": "Dr. C.V. Raman"},
+    )
+    assert join_res.status_code == 200
+    join_data = join_res.json()
+    assert join_data["status"] == "joined"
+    assert join_data["email"] == test_email
+    assert join_data["position"] >= 1
+    assert "SAMVAD Pro waitlist" in join_data["message"]
+
+    # 3. Check status is now on waitlist
+    status_after = client.get(f"/api/v1/auth/waitlist/status?email={test_email}")
+    assert status_after.status_code == 200
+    assert status_after.json()["on_waitlist"] is True
+    assert status_after.json()["position"] == join_data["position"]
+
+    # 4. Duplicate join returns already_joined idempotently
+    dup_join = client.post(
+        "/api/v1/auth/waitlist",
+        json={"email": test_email, "name": "Dr. C.V. Raman"},
+    )
+    assert dup_join.status_code == 200
+    assert dup_join.json()["status"] == "already_joined"

@@ -2,15 +2,16 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { MoonIcon, SunIcon } from "@/components/ui/Icons";
 
 export function UserAccountMenu() {
-  const { user, isAuthenticated, openAuthModal, logout, updateProfile } = useAuth();
+  const { user, isAuthenticated, openAuthModal, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [upgradedNotice, setUpgradedNotice] = useState(false);
+  const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on click outside
@@ -37,17 +38,9 @@ export function UserAccountMenu() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const handleUpgradeClick = async (e: React.MouseEvent) => {
+  const handleUpgradeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user) {
-      openAuthModal("signup");
-      return;
-    }
-    if (user.plan === "free") {
-      await updateProfile({ plan: "pro" });
-      setUpgradedNotice(true);
-      setTimeout(() => setUpgradedNotice(false), 2500);
-    }
+    router.push("/settings?tab=plan");
   };
 
   return (
@@ -74,7 +67,7 @@ export function UserAccountMenu() {
               <div className="mt-2 flex items-center justify-between text-[10px] font-mono-tech">
                 <span className="text-[var(--text-muted)]">Current Plan</span>
                 <span className="px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)] font-semibold border border-[var(--accent-border)] uppercase tracking-wider">
-                  {user.plan === "pro" ? "Pro Researcher" : "Free Tier"}
+                  Free Tier
                 </span>
               </div>
             </div>
@@ -102,13 +95,11 @@ export function UserAccountMenu() {
             >
               <div className="flex items-center gap-2.5">
                 <SparklesIcon className="w-4 h-4 text-[var(--accent)]" />
-                <span>My Plan & Upgrades</span>
+                <span>Upcoming Pro Plan</span>
               </div>
-              {user?.plan === "pro" ? (
-                <span className="text-[10px] font-mono-tech text-[var(--status-success)]">Active</span>
-              ) : (
-                <span className="text-[10px] font-mono-tech text-[var(--accent)] font-semibold">Pro $20</span>
-              )}
+              <span className="text-[10px] font-mono-tech px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)] font-medium">
+                Upcoming
+              </span>
             </Link>
 
             <Link
@@ -167,8 +158,8 @@ export function UserAccountMenu() {
             <div className="font-semibold text-xs text-[var(--text-primary)] group-hover:text-[var(--accent)] truncate">
               {user ? user.name : "Sign In"}
             </div>
-            <div className="text-[11px] text-[var(--text-muted)] font-normal capitalize">
-              {user?.plan === "pro" ? "Pro" : user ? "Free" : "Guest"}
+            <div className="text-[11px] text-[var(--text-muted)] font-normal">
+              Free
             </div>
           </div>
         </div>
@@ -177,14 +168,10 @@ export function UserAccountMenu() {
         <button
           type="button"
           onClick={handleUpgradeClick}
-          className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer shrink-0 ${
-            user?.plan === "pro"
-              ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent-border)]"
-              : "bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-[var(--accent)] shadow-sm"
-          }`}
-          title={user?.plan === "pro" ? "Pro Plan Active" : "Upgrade to Pro"}
+          className="px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer shrink-0 bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-[var(--accent)] shadow-sm"
+          title="Explore Upcoming Pro Features"
         >
-          {upgradedNotice ? "Upgraded! ✓" : user?.plan === "pro" ? "Pro" : "Upgrade"}
+          Upgrade
         </button>
       </div>
 

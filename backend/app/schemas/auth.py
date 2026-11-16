@@ -97,3 +97,30 @@ class UserResponse(BaseModel):
 class StatusMessageResponse(BaseModel):
     status: str = "ok"
     message: str
+
+
+class WaitlistRequest(BaseModel):
+    email: str = Field(..., description="Email address for Pro waitlist notification")
+    name: Optional[str] = Field(default=None, description="Optional user name")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        cleaned = v.strip().lower()
+        if not _EMAIL_REGEX.match(cleaned):
+            raise ValueError("Invalid email format.")
+        return cleaned
+
+
+class WaitlistResponse(BaseModel):
+    status: str = "joined"  # "joined" or "already_joined"
+    email: str
+    position: int
+    email_sent: bool
+    message: str
+
+
+class WaitlistStatusResponse(BaseModel):
+    on_waitlist: bool
+    email: str
+    position: Optional[int] = None

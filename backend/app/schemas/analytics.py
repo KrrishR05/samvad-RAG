@@ -7,6 +7,7 @@ and analytics API responses.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -21,6 +22,13 @@ class LatencyRecord(BaseModel):
     """
 
     request_id: str
+    query_id: Optional[str] = None
+    timestamp: Optional[str] = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    success: bool = True
+    strategy: Optional[str] = "hybrid"
+    query_text: Optional[str] = None
+    chunks_retrieved: Optional[int] = None
+    cached: bool = False
 
     stt_ms: Optional[float] = None
     query_processing_ms: Optional[float] = None

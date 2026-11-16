@@ -224,6 +224,15 @@ class Settings(BaseSettings):
         description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL",
     )
 
+    # --- Email / Notifications (SMTP) ---
+    smtp_host: str = Field(default="", description="SMTP host (e.g. smtp.gmail.com, smtp.resend.com)")
+    smtp_port: int = Field(default=587, description="SMTP port (587 for TLS, 465 for SSL)")
+    smtp_user: str = Field(default="", description="SMTP username / email address")
+    smtp_password: str = Field(default="", description="SMTP password or app password")
+    smtp_from_email: str = Field(default="notifications@samvad.ai", description="Sender email address")
+    smtp_from_name: str = Field(default="SAMVAD | संवाद", description="Sender display name")
+    smtp_use_tls: bool = Field(default=True, description="Enable STARTTLS encryption")
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

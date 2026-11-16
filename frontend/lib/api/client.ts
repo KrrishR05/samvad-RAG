@@ -8,10 +8,12 @@
 import type {
   AnalyticsSummaryResponse,
   ChunkStrategy,
+  DocumentChunksResponse,
   DocumentDeleteResponse,
   DocumentListResponse,
   DocumentUploadResponse,
   HealthResponse,
+  LatencyRecordItem,
   LatencyStatsResponse,
   PipelineStatusResponse,
   QueryRequest,
@@ -171,6 +173,14 @@ export async function deleteDocument(docId: string): Promise<DocumentDeleteRespo
   );
 }
 
+export async function getDocumentChunks(
+  docId: string
+): Promise<DocumentChunksResponse> {
+  return request<DocumentChunksResponse>(
+    `/api/v1/documents/${encodeURIComponent(docId)}/chunks`
+  );
+}
+
 // ─── Analytics Endpoints ───
 
 export async function getAnalyticsSummary(): Promise<AnalyticsSummaryResponse> {
@@ -179,4 +189,10 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummaryResponse> {
 
 export async function getLatencyStats(): Promise<LatencyStatsResponse> {
   return request<LatencyStatsResponse>("/api/v1/analytics/latency");
+}
+
+export async function getRecentAnalyticsRecords(
+  limit: number = 50
+): Promise<LatencyRecordItem[]> {
+  return request<LatencyRecordItem[]>(`/api/v1/analytics/records?limit=${limit}`);
 }

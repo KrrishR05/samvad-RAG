@@ -18,6 +18,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from app.core.auth_store import AuthStore, UserRecord, get_auth_store
+from app.core.mailer import send_waitlist_confirmation_email
 from app.schemas.auth import (
     AuthResponse,
     GoogleAuthRequest,
@@ -27,6 +28,9 @@ from app.schemas.auth import (
     StatusMessageResponse,
     UserDTO,
     UserResponse,
+    WaitlistRequest,
+    WaitlistResponse,
+    WaitlistStatusResponse,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -181,10 +185,16 @@ async def update_profile(
     user: UserRecord = Depends(get_current_user),
     store: AuthStore = Depends(get_auth_store),
 ) -> UserResponse:
+    if payload.plan and payload.plan.lower() != "free":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="SAMVAD Pro subscriptions are upcoming and not yet active. All accounts are currently on the Free tier.",
+        )
+
     updated = store.update_user_profile(
         user_id=user.id,
         name=payload.name,
-        plan=payload.plan,
+        plan="free",
         avatar_url=payload.avatar_url,
     )
     if not updated:
@@ -203,4 +213,62 @@ async def logout(
 ) -> StatusMessageResponse:
     store.revoke_session(token)
     return StatusMessageResponse(message="Logged out successfully.")
+
+
+@router.post(
+    "/waitlist",
+    response_model=WaitlistResponse,
+    summary="Join SAMVAD Pro early access waitlist and dispatch confirmation email",
+)
+async def join_waitlist(
+    payload: WaitlistRequest,
+    store: AuthStore = Depends(get_auth_store),
+) -> WaitlistResponse:
+    result = store.add_to_waitlist(
+        email=payload.email,
+        name=payload.name,
+    )
+    email_sent = False
+    if not result["already_joined"]:
+        email_sent = send_waitlist_confirmation_email(
+            to_email=payload.email,
+            name=payload.name,
+            position=result["position"],
+        )
+
+    msg = (
+        f"You are already on the priority waitlist at position #{result['position']}."
+        if result["already_joined"]
+        else f"You have been added to the SAMVAD Pro waitlist at position #{result['position']}! We will email you at {payload.email} when early access opens."
+    )
+
+    return WaitlistResponse(
+        status="already_joined" if result["already_joined"] else "joined",
+        email=payload.email,
+        position=result["position"],
+        email_sent=email_sent,
+        message=msg,
+    )
+
+
+@router.get(
+    "/waitlist/status",
+    response_model=WaitlistStatusResponse,
+    summary="Check if an email is already on the SAMVAD Pro waitlist",
+)
+async def get_waitlist_status(
+    email: str,
+    store: AuthStore = Depends(get_auth_store),
+) -> WaitlistStatusResponse:
+    on_list = store.is_on_waitlist(email)
+    pos = None
+    if on_list:
+        entry = store.add_to_waitlist(email=email)
+        pos = entry["position"]
+
+    return WaitlistStatusResponse(
+        on_waitlist=on_list,
+        email=email.strip().lower(),
+        position=pos,
+    )
 

@@ -14,9 +14,10 @@ import hmac
 import secrets
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Generator, Optional
 
 from pydantic import BaseModel, Field
 
@@ -46,11 +47,16 @@ class AuthStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
-    def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+    @contextmanager
+    def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
-        return conn
+        conn.execute("PRAGMA journal_mode = WAL;")
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def _init_db(self) -> None:
         with self._get_connection() as conn:
@@ -82,6 +88,17 @@ class AuthStore:
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+
+                CREATE TABLE IF NOT EXISTS pro_waitlist (
+                    id TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    name TEXT,
+                    user_id TEXT,
+                    created_at TEXT NOT NULL,
+                    notified INTEGER DEFAULT 0
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_waitlist_email ON pro_waitlist(email);
                 """
             )
 
@@ -350,6 +367,64 @@ class AuthStore:
             cursor = conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
             conn.commit()
             return cursor.rowcount > 0
+
+    # ─── Pro Plan Early Access Waitlist ───
+
+    def add_to_waitlist(
+        self,
+        email: str,
+        name: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        normalized = email.strip().lower()
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            row = conn.execute("SELECT * FROM pro_waitlist WHERE email = ?", (normalized,)).fetchone()
+            if row:
+                pos = conn.execute(
+                    "SELECT COUNT(*) FROM pro_waitlist WHERE created_at <= ?",
+                    (row["created_at"],),
+                ).fetchone()[0]
+                return {
+                    "id": row["id"],
+                    "email": row["email"],
+                    "name": row["name"],
+                    "created_at": row["created_at"],
+                    "already_joined": True,
+                    "position": pos,
+                }
+
+            waitlist_id = f"wtl_{uuid.uuid4().hex[:12]}"
+            conn.execute(
+                """
+                INSERT INTO pro_waitlist (id, email, name, user_id, created_at, notified)
+                VALUES (?, ?, ?, ?, ?, 0)
+                """,
+                (waitlist_id, normalized, name.strip() if name else None, user_id, now),
+            )
+            conn.commit()
+            pos = conn.execute("SELECT COUNT(*) FROM pro_waitlist").fetchone()[0]
+
+            return {
+                "id": waitlist_id,
+                "email": normalized,
+                "name": name.strip() if name else None,
+                "created_at": now,
+                "already_joined": False,
+                "position": pos,
+            }
+
+    def is_on_waitlist(self, email: str) -> bool:
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM pro_waitlist WHERE email = ?",
+                (email.strip().lower(),),
+            ).fetchone()
+            return row is not None
+
+    def get_waitlist_count(self) -> int:
+        with self._get_connection() as conn:
+            return conn.execute("SELECT COUNT(*) FROM pro_waitlist").fetchone()[0]
 
 
 _auth_store: Optional[AuthStore] = None

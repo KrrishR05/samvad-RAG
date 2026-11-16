@@ -51,6 +51,13 @@ class MetricsStore:
         with self._lock:
             return len(self._records)
 
+    def get_recent_records(self, limit: int = 50) -> list[LatencyRecord]:
+        """Return the most recent latency records, newest first."""
+        with self._lock:
+            records = list(self._records)
+        records.reverse()
+        return records[:limit]
+
     def get_summary(self) -> AnalyticsSummaryResponse:
         """Compute an analytics summary across all recorded requests."""
         with self._lock:

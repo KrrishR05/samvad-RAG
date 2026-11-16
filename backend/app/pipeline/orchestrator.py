@@ -672,7 +672,14 @@ class PipelineOrchestrator:
             guardrail_ms=guardrail_ms,
             total_ms=total_ms,
         )
-        self._record_metrics(rid, latency)
+        self._record_metrics(
+            rid,
+            latency,
+            success=True,
+            strategy=chosen_key,
+            query_text=cleaned_query,
+            chunks_retrieved=len(ranked_chunks),
+        )
 
         confidence = (
             Confidence(
@@ -719,7 +726,13 @@ class PipelineOrchestrator:
             reranking_ms=rerank_ms,
             total_ms=total_ms,
         )
-        self._record_metrics(rid, latency)
+        self._record_metrics(
+            rid,
+            latency,
+            success=False,
+            strategy=chosen_key,
+            chunks_retrieved=len(chunks),
+        )
         return QueryResponse(
             request_id=rid,
             status=QueryStatus.ABSTAINED,
@@ -732,10 +745,23 @@ class PipelineOrchestrator:
             message=message,
         )
 
-    def _record_metrics(self, rid: str, latency: LatencyBreakdown) -> None:
+    def _record_metrics(
+        self,
+        rid: str,
+        latency: LatencyBreakdown,
+        success: bool = True,
+        strategy: Optional[str] = None,
+        query_text: Optional[str] = None,
+        chunks_retrieved: Optional[int] = None,
+    ) -> None:
         self.metrics_store.record(
             LatencyRecord(
                 request_id=rid,
+                query_id=rid,
+                success=success,
+                strategy=strategy or "hybrid",
+                query_text=query_text,
+                chunks_retrieved=chunks_retrieved,
                 stt_ms=latency.stt_ms,
                 query_processing_ms=latency.query_processing_ms,
                 embedding_ms=latency.embedding_ms,

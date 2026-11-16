@@ -35,6 +35,22 @@ class DocumentDeleteResponse(BaseModel):
     total_chunks_indexed: int
 
 
+class ChunkItemDTO(BaseModel):
+    chunk_id: str
+    chunk_index: int
+    text: str
+    char_count: int
+    token_count: int
+    language: Optional[str] = None
+    strategy: Optional[str] = None
+
+
+class DocumentChunksResponse(BaseModel):
+    doc_id: str
+    total_chunks: int
+    chunks: list[ChunkItemDTO]
+
+
 class PipelineStatusResponse(BaseModel):
     retrieval_ready: bool
     indexed_documents: int
@@ -120,6 +136,32 @@ async def delete_document(doc_id: str) -> DocumentDeleteResponse:
         doc_id=doc_id,
         deleted=True,
         total_chunks_indexed=total_chunks,
+    )
+
+
+@router.get(
+    "/documents/{doc_id}/chunks",
+    response_model=DocumentChunksResponse,
+    summary="List all chunks associated with a specific document",
+)
+async def get_document_chunks(doc_id: str) -> DocumentChunksResponse:
+    runtime = get_runtime()
+    chunks = runtime.document_store.get_chunks_for_document(doc_id)
+    return DocumentChunksResponse(
+        doc_id=doc_id,
+        total_chunks=len(chunks),
+        chunks=[
+            ChunkItemDTO(
+                chunk_id=c.metadata.chunk_id,
+                chunk_index=c.metadata.chunk_index,
+                text=c.text,
+                char_count=c.metadata.char_count,
+                token_count=c.metadata.token_count,
+                language=c.metadata.language,
+                strategy=c.metadata.chunk_strategy.value if c.metadata.chunk_strategy else None,
+            )
+            for c in chunks
+        ],
     )
 
 

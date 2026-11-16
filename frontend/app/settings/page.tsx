@@ -11,6 +11,7 @@ import type {
 import { AppShell } from "@/components/layout/AppShell";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { useAuth } from "@/context/AuthContext";
+import { getWaitlistStatus, joinProWaitlist } from "@/lib/api/auth";
 
 const PREFS_KEY = "samvad_workbench_prefs_v1";
 
@@ -39,18 +40,32 @@ function SettingsContent() {
   // Edit profile state
   const [editName, setEditName] = useState(user?.name || "");
   const [nameSaved, setNameSaved] = useState(false);
-  const [planSaved, setPlanSaved] = useState(false);
+  const [waitlistNotice, setWaitlistNotice] = useState(false);
+  const [onWaitlist, setOnWaitlist] = useState(false);
+  const [waitlistPos, setWaitlistPos] = useState<number | null>(null);
+  const [waitlistMsg, setWaitlistMsg] = useState<string | null>(null);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
 
   useEffect(() => {
     const tabParam = searchParams.get("tab") as SettingsTab;
     if (tabParam && ["general", "account", "plan", "diagnostics"].includes(tabParam)) {
-      startTransition(() => setActiveTab(tabParam));
+      setActiveTab(tabParam);
     }
   }, [searchParams]);
 
   useEffect(() => {
     if (user?.name) {
-      startTransition(() => setEditName(user.name));
+      setEditName(user.name);
+    }
+    if (user?.email) {
+      getWaitlistStatus(user.email)
+        .then((res) => {
+          if (res.on_waitlist) {
+            setOnWaitlist(true);
+            setWaitlistPos(res.position ?? null);
+          }
+        })
+        .catch(() => {});
     }
   }, [user]);
 
@@ -113,14 +128,26 @@ function SettingsContent() {
     setTimeout(() => setNameSaved(false), 2000);
   };
 
-  const handleTogglePlan = async (targetPlan: "free" | "pro") => {
-    if (!user) {
-      openAuthModal("signup");
+  const handleWaitlistClick = async () => {
+    if (!user?.email) {
+      openAuthModal("login");
       return;
     }
-    await updateProfile({ plan: targetPlan });
-    setPlanSaved(true);
-    setTimeout(() => setPlanSaved(false), 2000);
+    setWaitlistLoading(true);
+    try {
+      const res = await joinProWaitlist(user.email, user.name);
+      setOnWaitlist(true);
+      setWaitlistPos(res.position);
+      setWaitlistMsg(res.message);
+      setWaitlistNotice(true);
+      setTimeout(() => setWaitlistNotice(false), 8000);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setWaitlistMsg(err.message);
+      }
+    } finally {
+      setWaitlistLoading(false);
+    }
   };
 
   const getInitials = (name: string) => {
@@ -312,7 +339,7 @@ function SettingsContent() {
                             {user.name}
                           </span>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-mono-tech uppercase tracking-wider bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)]">
-                            {user.plan === "pro" ? "Pro" : "Free"}
+                            Free Plan
                           </span>
                         </div>
                         <div className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
@@ -419,93 +446,134 @@ function SettingsContent() {
             <div className="space-y-5">
               <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
-                    Available Research Plans
-                  </h3>
-                  {planSaved && (
-                    <span className="text-[11px] font-mono-tech text-[var(--status-success)]">
-                      Plan updated!
-                    </span>
-                  )}
+                  <div>
+                    <h3 className="text-xs font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
+                      Available Research Plans
+                    </h3>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                      All accounts are currently enrolled in the comprehensive Free tier during preview.
+                    </p>
+                  </div>
                 </div>
 
+                {(onWaitlist || waitlistNotice) && (
+                  <div className="p-4 rounded-xl bg-[var(--accent-soft)]/30 border border-[var(--accent-border)] text-[var(--text-primary)] text-xs flex items-start gap-3 animate-in fade-in duration-200">
+                    <span className="text-base text-[var(--accent)] font-bold mt-0.5">✓</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-[var(--accent)]">
+                          You&apos;re on the Early Access Waitlist!
+                        </span>
+                        {waitlistPos && (
+                          <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] font-bold">
+                            Priority Queue #{waitlistPos}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[var(--text-secondary)] mt-1 leading-relaxed">
+                        {waitlistMsg ||
+                          `Your request for SAMVAD Pro early access is registered for ${user?.email || "your account"}. A notification will be dispatched to your email the moment subscriptions open.`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Free Plan */}
-                  <div className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
-                    user?.plan !== "pro"
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)]/20 shadow-md"
-                      : "border-[var(--border-subtle)] bg-[var(--bg-surface)] opacity-80"
-                  }`}>
+                  {/* Free Plan (Active for all) */}
+                  <div className="p-5 rounded-2xl border border-[var(--accent)] bg-[var(--accent-soft)]/15 shadow-sm flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-display font-bold text-base text-[var(--text-primary)]">
                           SAMVAD Free
                         </span>
-                        {user?.plan !== "pro" && (
-                          <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-[var(--accent)] text-white font-semibold">
-                            CURRENT
-                          </span>
-                        )}
+                        <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-[var(--accent)] text-white font-semibold">
+                          CURRENT PLAN
+                        </span>
                       </div>
-                      <div className="text-2xl font-bold font-display text-[var(--text-primary)] mb-3">
+                      <div className="text-2xl font-bold font-display text-[var(--text-primary)] mb-1">
                         $0 <span className="text-xs font-normal text-[var(--text-muted)]">/ forever</span>
                       </div>
+                      <p className="text-[11px] text-[var(--text-muted)] mb-3">
+                        Active tier enabled for all verified researchers.
+                      </p>
                       <ul className="text-xs text-[var(--text-secondary)] space-y-2 mb-4">
                         <li className="flex items-center gap-2">✓ 1,500 daily requests (Gemini 3.5 Flash Lite)</li>
                         <li className="flex items-center gap-2">✓ Native Indic Voice STT/TTS (Sarvam AI)</li>
                         <li className="flex items-center gap-2">✓ Hybrid RRF (BM25 + Dense vector search)</li>
                         <li className="flex items-center gap-2">✓ Transparent clickable evidence citations</li>
-                        <li className="flex items-center gap-2">✓ Standard document ingestion</li>
+                        <li className="flex items-center gap-2">✓ Multi-format document ingestion (PDF, DOCX, TXT)</li>
                       </ul>
                     </div>
 
                     <button
                       type="button"
-                      disabled={user?.plan !== "pro"}
-                      onClick={() => handleTogglePlan("free")}
-                      className="w-full py-2 rounded-xl text-xs font-semibold border border-[var(--border-subtle)] bg-[var(--bg-panel)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-40 cursor-pointer"
+                      disabled
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--bg-surface)] text-[var(--status-success)] border border-[var(--status-success)]/30 flex items-center justify-center gap-1.5 cursor-default select-none shadow-xs"
                     >
-                      {user?.plan !== "pro" ? "Active Plan" : "Switch to Free"}
+                      <span>Active Plan</span>
+                      <span>✓</span>
                     </button>
                   </div>
 
-                  {/* Pro Plan */}
-                  <div className={`p-5 rounded-2xl border transition-all flex flex-col justify-between ${
-                    user?.plan === "pro"
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)]/20 shadow-md ring-1 ring-[var(--accent)]"
-                      : "border-[var(--border-default)] bg-[var(--bg-surface)] hover:border-[var(--accent)]"
-                  }`}>
+                  {/* Pro Plan (Upcoming Tier) */}
+                  <div className="p-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:border-[var(--accent-border)] transition-all flex flex-col justify-between relative overflow-hidden">
+                    <div className="absolute top-0 right-0 px-3 py-1 bg-gradient-to-l from-[var(--accent-soft)] to-transparent text-[10px] font-mono-tech font-bold text-[var(--accent)] tracking-wider">
+                      UPCOMING
+                    </div>
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-display font-bold text-base text-[var(--accent)] flex items-center gap-1.5">
                           <span>SAMVAD Pro</span>
                           <span className="text-xs">✦</span>
                         </span>
-                        {user?.plan === "pro" && (
-                          <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-[var(--status-success)] text-white font-semibold">
-                            ACTIVE PRO
-                          </span>
-                        )}
+                        <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] font-semibold uppercase tracking-wider">
+                          Coming Soon
+                        </span>
                       </div>
-                      <div className="text-2xl font-bold font-display text-[var(--text-primary)] mb-3">
-                        $20 <span className="text-xs font-normal text-[var(--text-muted)]">/ month</span>
+                      <div className="text-2xl font-bold font-display text-[var(--text-primary)] mb-1">
+                        $20 <span className="text-xs font-normal text-[var(--text-muted)]">/ month (Planned)</span>
                       </div>
+                      <p className="text-[11px] text-[var(--text-muted)] mb-3">
+                        Heavy research workspace with priority compute and custom fine-tuning.
+                      </p>
                       <ul className="text-xs text-[var(--text-secondary)] space-y-2 mb-4">
                         <li className="flex items-center gap-2 text-[var(--text-primary)] font-medium">✦ Everything in Free, plus:</li>
                         <li className="flex items-center gap-2">✓ Unlimited knowledge base documents</li>
-                        <li className="flex items-center gap-2">✓ Deep multi-pass intensity reranking</li>
-                        <li className="flex items-center gap-2">✓ Priority Sarvam Bulbul voice synthesis</li>
+                        <li className="flex items-center gap-2">✓ Deep multi-pass intensity reranking & reasoning</li>
+                        <li className="flex items-center gap-2">✓ Priority Sarvam Bulbul Indic voice synthesis</li>
                         <li className="flex items-center gap-2">✓ Custom domain embeddings & SVD models</li>
-                        <li className="flex items-center gap-2">✓ Workspace collaboration & multi-turn traces</li>
+                        <li className="flex items-center gap-2">✓ Multi-turn research workspaces & exports</li>
                       </ul>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => handleTogglePlan("pro")}
-                      className="w-full py-2 rounded-xl text-xs font-semibold bg-[var(--accent)] hover:opacity-95 text-white transition-opacity shadow-sm cursor-pointer"
+                      onClick={handleWaitlistClick}
+                      disabled={waitlistLoading || onWaitlist}
+                      className={`w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm ${
+                        onWaitlist
+                          ? "bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] cursor-default"
+                          : waitlistLoading
+                          ? "bg-[var(--accent)]/80 text-white cursor-wait"
+                          : "bg-[var(--accent)] hover:opacity-95 text-white cursor-pointer active:scale-[0.99]"
+                      }`}
                     >
-                      {user?.plan === "pro" ? "Manage Pro Subscription" : "Upgrade to SAMVAD Pro"}
+                      {waitlistLoading ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Joining Priority Waitlist...</span>
+                        </>
+                      ) : onWaitlist ? (
+                        <>
+                          <span className="text-sm font-bold">✓</span>
+                          <span>On Early Access Waitlist {waitlistPos ? `(#${waitlistPos})` : ""}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-sm">✦</span>
+                          <span>Notify Me When Pro Launches</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

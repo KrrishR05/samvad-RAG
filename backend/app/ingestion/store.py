@@ -270,6 +270,34 @@ class DocumentStore:
             results.append(DocumentChunk(text=row["text"], metadata=meta))
         return results
 
+    def get_chunks_for_document(self, doc_id: str) -> list[DocumentChunk]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM chunks WHERE parent_document_id = ? ORDER BY chunk_index ASC",
+                (doc_id,),
+            ).fetchall()
+
+        results: list[DocumentChunk] = []
+        for row in rows:
+            strategy = (
+                ChunkStrategy(row["chunk_strategy"])
+                if row["chunk_strategy"]
+                else None
+            )
+            meta = ChunkMetadata(
+                chunk_id=row["chunk_id"],
+                parent_document_id=row["parent_document_id"],
+                language=row["language"],
+                chunk_strategy=strategy,
+                chunk_index=row["chunk_index"],
+                total_chunks=row["total_chunks"],
+                char_count=row["char_count"],
+                token_count=row["token_count"],
+                extra=json.loads(row["extra_json"]),
+            )
+            results.append(DocumentChunk(text=row["text"], metadata=meta))
+        return results
+
     def delete_document(self, doc_id: str) -> bool:
         with self._connect() as conn:
             cur = conn.execute("DELETE FROM documents WHERE doc_id = ?", (doc_id,))

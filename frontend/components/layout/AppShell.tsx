@@ -8,6 +8,7 @@ import type { PipelineStatusResponse } from "@/types/api";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { UserAccountMenu } from "@/components/layout/UserAccountMenu";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { useAuth } from "@/context/AuthContext";
 import {
   AnalyticsIcon,
   DocumentsIcon,
@@ -55,6 +56,7 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const { user, openAuthModal } = useAuth();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -388,7 +390,27 @@ export function AppShell({
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">{headerActions}</div>
+          <div className="flex items-center gap-2">
+            {headerActions}
+            {!user && (
+              <div className="flex items-center gap-2 ml-1">
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-all cursor-pointer"
+                >
+                  Log in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("signup")}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                >
+                  Sign up for free
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Body */}

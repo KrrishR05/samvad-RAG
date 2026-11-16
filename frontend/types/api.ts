@@ -158,6 +158,22 @@ export interface DocumentDeleteResponse {
   total_chunks_indexed: number;
 }
 
+export interface ChunkItem {
+  chunk_id: string;
+  chunk_index: number;
+  text: string;
+  char_count: number;
+  token_count: number;
+  language?: string | null;
+  strategy?: string | null;
+}
+
+export interface DocumentChunksResponse {
+  doc_id: string;
+  total_chunks: number;
+  chunks: ChunkItem[];
+}
+
 export interface PipelineStatusResponse {
   retrieval_ready: boolean;
   indexed_documents: number;
@@ -207,6 +223,25 @@ export interface LatencyStatsResponse {
   overall?: PercentileStats;
   by_stage?: StageLatencyStats;
   message?: string;
+}
+
+export interface LatencyRecordItem {
+  request_id?: string;
+  query_id?: string;
+  timestamp?: string;
+  success?: boolean;
+  strategy?: string | null;
+  query_text?: string | null;
+  stt_ms?: number | null;
+  query_processing_ms?: number | null;
+  embedding_ms?: number | null;
+  retrieval_ms?: number | null;
+  reranking_ms?: number | null;
+  generation_ms?: number | null;
+  guardrail_ms?: number | null;
+  total_ms?: number | null;
+  chunks_retrieved?: number | null;
+  cached?: boolean | null;
 }
 
 // ─── Error Response ───

@@ -6,6 +6,8 @@ import type {
   SignupPayload,
   User,
   UserResponse,
+  WaitlistResponse,
+  WaitlistStatusResponse,
 } from "@/types/auth";
 import { ApiClientError } from "@/lib/api/client";
 
@@ -89,5 +91,23 @@ export async function logoutUser(token: string): Promise<void> {
   } catch {
     // Ignore cleanup failure
   }
+}
+
+export async function joinProWaitlist(
+  email: string,
+  name?: string
+): Promise<WaitlistResponse> {
+  return authFetch<WaitlistResponse>("/api/v1/auth/waitlist", {
+    method: "POST",
+    body: JSON.stringify({ email, name }),
+  });
+}
+
+export async function getWaitlistStatus(
+  email: string
+): Promise<WaitlistStatusResponse> {
+  return authFetch<WaitlistStatusResponse>(
+    `/api/v1/auth/waitlist/status?email=${encodeURIComponent(email)}`
+  );
 }
 

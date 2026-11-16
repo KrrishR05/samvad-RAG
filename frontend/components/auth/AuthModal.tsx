@@ -1,47 +1,103 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { SamvadLogo } from "@/components/ui/Icons";
 
 export function AuthModal() {
   const {
     isAuthModalOpen,
-    authModalMode,
     closeAuthModal,
-    openAuthModal,
     login,
     signup,
     loginWithGoogle,
     isLoading,
   } = useAuth();
 
+  const [step, setStep] = useState<"email" | "password">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showGooglePicker, setShowGooglePicker] = useState(false);
-  const [googleCustomEmail, setGoogleCustomEmail] = useState("");
-  const [googleCustomName, setGoogleCustomName] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [phoneStep, setPhoneStep] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  // Listen for Google Auth Popup postMessage
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data?.type === "GOOGLE_AUTH_SUCCESS" && event.data?.payload) {
+        setError(null);
+        loginWithGoogle(event.data.payload).catch((err: unknown) => {
+          if (err instanceof Error) setError(err.message);
+          else setError("Google sign-in failed. Please try again.");
+        });
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [loginWithGoogle]);
 
   if (!isAuthModalOpen) return null;
 
-  const isLogin = authModalMode === "login";
+  // Open native Google Account Chooser popup centered on screen
+  const handleGoogleClick = () => {
+    setError(null);
+    const width = 500;
+    const height = 630;
+    const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+    const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    window.open(
+      "/auth/google-chooser",
+      "google_signin_popup",
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no,resizable=yes`
+    );
+  };
+
+  const handleAppleClick = () => {
+    setError("Apple authentication is coming soon. Please continue with Google or Email.");
+  };
+
+  const handlePhoneClick = () => {
+    setError(null);
+    setPhoneStep(true);
+  };
+
+  const handleEmailContinue = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!email.trim() || !password.trim()) {
-      setError("Please fill in all required fields.");
+    const trimmed = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmed || !emailRegex.test(trimmed)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    // Default known demo user is krrish@samvad.ai
+    if (trimmed === "krrish@samvad.ai") {
+      setIsNewUser(false);
+    } else {
+      // Allow user to login or auto-register seamlessly
+      setIsNewUser(true);
+    }
+
+    setStep("password");
+  };
+
+  const handleFinalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!password.trim()) {
+      setError("Please enter your password.");
       return;
     }
 
     try {
-      if (isLogin) {
-        await login({ email: email.trim(), password });
-      } else {
+      if (isNewUser) {
         if (!name.trim()) {
           setError("Please enter your full name.");
           return;
@@ -50,81 +106,76 @@ export function AuthModal() {
           setError("Password must be at least 6 characters.");
           return;
         }
-        await signup({ name: name.trim(), email: email.trim(), password });
+        await signup({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+        });
+      } else {
+        await login({
+          email: email.trim().toLowerCase(),
+          password,
+        });
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Authentication failed. Please verify your details.");
+        setError("Authentication failed. Please verify your credentials.");
       }
     }
   };
 
-  const handleGoogleClick = () => {
-    setError(null);
-    setShowGooglePicker(true);
+  const handlePhoneSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneNumber.trim()) {
+      setError("Please enter a valid phone number.");
+      return;
+    }
+    setError("SMS verification service is in private beta. Please continue with Google or Email.");
   };
 
-  const confirmGoogleAuth = async (selectedEmail: string, selectedName: string) => {
+  const resetModal = () => {
+    setStep("email");
+    setPhoneStep(false);
     setError(null);
-    try {
-      const googleId = "goog_" + Math.random().toString(36).substring(2, 11);
-      await loginWithGoogle({
-        google_id: googleId,
-        email: selectedEmail,
-        name: selectedName,
-        avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-          selectedName
-        )}&backgroundColor=8b5cf6,ec4899,3b82f6`,
-      });
-      setShowGooglePicker(false);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Google authentication failed. Please try again.");
-      }
-    }
+    setPassword("");
+    closeAuthModal();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div
-        className="w-full max-w-[420px] rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-2xl p-6 sm:p-8 relative text-[var(--text-primary)]"
+        className="w-full max-w-[420px] rounded-[28px] border border-[var(--border-default)] bg-[var(--bg-panel)] shadow-2xl p-7 sm:p-9 relative text-[var(--text-primary)] animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
+        {/* Close Button ('×' in top right, exactly like ChatGPT) */}
         <button
           type="button"
-          onClick={closeAuthModal}
-          className="absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+          onClick={resetModal}
+          className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
           title="Close"
+          aria-label="Close"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
 
-        {/* Brand Header */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <div className="p-2.5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] mb-3 shadow-inner">
-            <SamvadLogo className="w-8 h-8" />
-          </div>
-          <h2 className="font-display font-bold text-xl sm:text-2xl tracking-tight text-[var(--text-primary)]">
-            {isLogin ? "Welcome back" : "Create your account"}
+        {/* Title & Subtitle (Exact ChatGPT styling from screenshot) */}
+        <div className="text-center mb-6 pt-1">
+          <h2 className="font-display font-bold text-2xl tracking-tight text-[var(--text-primary)]">
+            Log in or sign up
           </h2>
-          <p className="text-xs text-[var(--text-secondary)] mt-1.5 max-w-[300px]">
-            {isLogin
-              ? "Sign in to SAMVAD to access research workspaces and indexed evidence."
-              : "Experience voice-first, evidence-grounded AI research in 10+ Indic languages."}
+          <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed max-w-[320px] mx-auto">
+            You&apos;ll get smarter responses and can upload files, images, and more.
           </p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-[var(--status-error)]/10 border border-[var(--status-error)]/30 text-[var(--status-error)] text-xs flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-[var(--status-error)]/10 border border-[var(--status-error)]/30 text-[var(--status-error)] text-xs flex items-center gap-2 animate-in fade-in">
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
@@ -134,89 +185,43 @@ export function AuthModal() {
           </div>
         )}
 
-        {/* Google OAuth Modal Picker Popup */}
-        {showGooglePicker ? (
-          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 mb-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
-              <span className="text-xs font-semibold flex items-center gap-1.5">
-                <GoogleIcon className="w-4 h-4" />
-                <span>Choose a Google Account</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowGooglePicker(false)}
-                className="text-[11px] text-[var(--text-muted)] hover:underline"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* Quick 1-click Google Profile */}
-            <button
-              type="button"
-              onClick={() => confirmGoogleAuth("krrish.raj@gmail.com", "Krrish Raj")}
-              className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-[var(--bg-panel)] border border-transparent hover:border-[var(--border-subtle)] transition-colors text-left cursor-pointer group"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-                KR
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)]">
-                  Krrish Raj
-                </div>
-                <div className="text-[11px] text-[var(--text-muted)] truncate">krrish.raj@gmail.com</div>
-              </div>
-              <span className="text-[10px] font-mono-tech px-1.5 py-0.5 rounded bg-[var(--bg-panel)] text-[var(--accent)] border border-[var(--accent-border)]">
-                Active
-              </span>
-            </button>
-
-            {/* Custom Google Account Entry */}
-            <div className="pt-2 border-t border-[var(--border-subtle)]/60 space-y-2">
-              <span className="text-[11px] text-[var(--text-muted)] block">Or connect another Google account:</span>
-              <input
-                type="text"
-                placeholder="Google Account Name (e.g. Priya Sharma)"
-                value={googleCustomName}
-                onChange={(e) => setGoogleCustomName(e.target.value)}
-                className="w-full text-xs px-2.5 py-1.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none"
-              />
-              <input
-                type="email"
-                placeholder="Google Email (e.g. priya@gmail.com)"
-                value={googleCustomEmail}
-                onChange={(e) => setGoogleCustomEmail(e.target.value)}
-                className="w-full text-xs px-2.5 py-1.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none"
-              />
-              <button
-                type="button"
-                disabled={!googleCustomEmail.trim()}
-                onClick={() =>
-                  confirmGoogleAuth(
-                    googleCustomEmail.trim(),
-                    googleCustomName.trim() || googleCustomEmail.split("@")[0]
-                  )
-                }
-                className="w-full py-1.5 rounded-md text-xs font-medium bg-[var(--accent)] hover:opacity-95 text-white transition-opacity disabled:opacity-50 cursor-pointer"
-              >
-                Sign In with this Google Account
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Primary Google Button (ChatGPT / Gemini style) */}
+        {/* STEP 1: Main ChatGPT-style Socials + Single Email Input */}
+        {step === "email" && !phoneStep && (
+          <div className="space-y-3">
+            {/* 1. Continue with Google (Exact Pill Button from screenshot) */}
             <button
               type="button"
               onClick={handleGoogleClick}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-default)] transition-all font-medium text-xs sm:text-sm shadow-sm cursor-pointer"
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-full border border-[var(--border-strong)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-xs cursor-pointer active:scale-[0.99]"
             >
-              <GoogleIcon className="w-4 h-4" />
+              <GoogleIcon className="w-4 h-4 shrink-0" />
               <span>Continue with Google</span>
             </button>
 
-            {/* Divider */}
+            {/* 2. Continue with Apple */}
+            <button
+              type="button"
+              onClick={handleAppleClick}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-full border border-[var(--border-strong)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-xs cursor-pointer active:scale-[0.99]"
+            >
+              <AppleIcon className="w-4 h-4 shrink-0" />
+              <span>Continue with Apple</span>
+            </button>
+
+            {/* 3. Continue with phone */}
+            <button
+              type="button"
+              onClick={handlePhoneClick}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-full border border-[var(--border-strong)] bg-[var(--bg-surface)] hover:bg-[var(--bg-hover)] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-xs cursor-pointer active:scale-[0.99]"
+            >
+              <PhoneIcon className="w-4 h-4 shrink-0" />
+              <span>Continue with phone</span>
+            </button>
+
+            {/* Divider: OR */}
             <div className="flex items-center my-4">
               <div className="flex-1 border-t border-[var(--border-subtle)]" />
               <span className="px-3 text-[11px] font-mono-tech uppercase text-[var(--text-muted)] tracking-wider">
@@ -225,137 +230,186 @@ export function AuthModal() {
               <div className="flex-1 border-t border-[var(--border-subtle)]" />
             </div>
 
-            {/* Email Form */}
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {!isLogin && (
-                <div>
-                  <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Krrish Raj"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs sm:text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none transition-colors text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                  />
-                </div>
-              )}
-
+            {/* Email Input + Continue */}
+            <form onSubmit={handleEmailContinue} className="space-y-3">
               <div>
-                <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1">
-                  Email Address
-                </label>
                 <input
                   type="email"
                   required
-                  placeholder="name@example.com"
+                  placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-xs sm:text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none transition-colors text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                  className="w-full px-4 py-3 rounded-2xl text-xs sm:text-sm bg-[var(--bg-surface)] border border-[var(--border-strong)] focus:border-[var(--accent)] focus:outline-none transition-colors text-[var(--text-primary)] placeholder-[var(--text-muted)] shadow-xs"
                 />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-medium text-[var(--text-secondary)]">
-                    Password
-                  </label>
-                  {isLogin && (
-                    <button
-                      type="button"
-                      onClick={() => alert("To reset password, please contact the administrator.")}
-                      className="text-[10px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
-                    >
-                      Forgot password?
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 pr-9 rounded-xl text-xs sm:text-sm bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus:border-[var(--accent)] focus:outline-none transition-colors text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? (
-                      <EyeOffIcon className="w-3.5 h-3.5" />
-                    ) : (
-                      <EyeIcon className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full mt-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold bg-[var(--accent)] hover:opacity-95 text-white transition-opacity shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-full text-xs sm:text-sm font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
               >
-                {isLoading ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : isLogin ? (
-                  "Log in"
-                ) : (
-                  "Create account"
-                )}
+                Continue
               </button>
             </form>
-          </>
+          </div>
         )}
 
-        {/* Switch Login / Signup */}
-        <div className="mt-5 text-center text-xs text-[var(--text-secondary)]">
-          {isLogin ? (
-            <span>
-              Don&apos;t have an account?{" "}
+        {/* STEP 2: Password & Account Completion */}
+        {step === "password" && !phoneStep && (
+          <form onSubmit={handleFinalSubmit} className="space-y-4">
+            {/* Email pill with edit button */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-xs">
+              <span className="font-medium text-[var(--text-primary)] truncate mr-2">
+                {email}
+              </span>
               <button
                 type="button"
                 onClick={() => {
+                  setStep("email");
                   setError(null);
-                  setShowGooglePicker(false);
-                  openAuthModal("signup");
                 }}
-                className="font-medium text-[var(--accent)] hover:underline cursor-pointer"
+                className="text-[11px] font-semibold text-[var(--accent)] hover:underline cursor-pointer shrink-0"
               >
-                Sign up
+                Edit
               </button>
-            </span>
-          ) : (
-            <span>
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  setShowGooglePicker(false);
-                  openAuthModal("login");
-                }}
-                className="font-medium text-[var(--accent)] hover:underline cursor-pointer"
-              >
-                Log in
-              </button>
-            </span>
-          )}
-        </div>
+            </div>
 
-        {/* Security Badge */}
-        <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-center gap-1.5 text-[10.5px] text-[var(--text-muted)]">
-          <svg className="w-3 h-3 text-[var(--status-success)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          <span>PBKDF2 encrypted · Google OAuth verified</span>
-        </div>
+            {isNewUser && (
+              <div>
+                <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Krrish Raj"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl text-xs sm:text-sm bg-[var(--bg-surface)] border border-[var(--border-strong)] focus:border-[var(--accent)] focus:outline-none transition-colors text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                />
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-medium text-[var(--text-secondary)]">
+                  {isNewUser ? "Create Password" : "Password"}
+                </label>
+                {!isNewUser && (
+                  <button
+                    type="button"
+                    onClick={() => alert("To reset password, contact administrator or test with Samvad@2026.")}
+                    className="text-[11px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 pr-10 rounded-xl text-xs sm:text-sm bg-[var(--bg-surface)] border border-[var(--border-strong)] focus:border-[var(--accent)] focus:outline-none transition-colors text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOffIcon className="w-4 h-4" />
+                  ) : (
+                    <EyeIcon className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              {isNewUser && (
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                  Must be at least 6 characters.
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 px-4 rounded-full text-xs sm:text-sm font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : isNewUser ? (
+                "Create account"
+              ) : (
+                "Continue"
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStep("email");
+                setError(null);
+              }}
+              className="w-full text-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] pt-1 cursor-pointer"
+            >
+              ← Back to all sign in options
+            </button>
+          </form>
+        )}
+
+        {/* STEP PHONE */}
+        {phoneStep && (
+          <form onSubmit={handlePhoneSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--text-secondary)] mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                required
+                placeholder="+91 98765 43210"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl text-xs sm:text-sm bg-[var(--bg-surface)] border border-[var(--border-strong)] focus:border-[var(--accent)] focus:outline-none transition-colors text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 px-4 rounded-full text-xs sm:text-sm font-semibold bg-[var(--text-primary)] text-[var(--bg-canvas)] hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Send SMS Code
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPhoneStep(false);
+                setError(null);
+              }}
+              className="w-full text-center text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] pt-1 cursor-pointer"
+            >
+              ← Back to all sign in options
+            </button>
+          </form>
+        )}
+
+        {/* Footer Terms */}
+        <p className="mt-6 text-center text-[10.5px] text-[var(--text-muted)] leading-relaxed">
+          By continuing, you agree to SAMVAD&apos;s{" "}
+          <span className="underline hover:text-[var(--text-secondary)] cursor-pointer">
+            Terms of Use
+          </span>{" "}
+          and{" "}
+          <span className="underline hover:text-[var(--text-secondary)] cursor-pointer">
+            Privacy Policy
+          </span>
+          .
+        </p>
       </div>
     </div>
   );
@@ -380,6 +434,22 @@ function GoogleIcon({ className }: { className?: string }) {
         fill="#EA4335"
         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
       />
+    </svg>
+  );
+}
+
+function AppleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.84c.66-.82 1.11-1.96.99-3.1-.96.04-2.14.64-2.82 1.44-.61.71-1.15 1.87-1.01 2.98 1.07.08 2.18-.5 2.84-1.32z" />
+    </svg>
+  );
+}
+
+function PhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }
