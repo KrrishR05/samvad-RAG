@@ -25,6 +25,7 @@ import {
 
 const TOKEN_KEY = "samvad_auth_token";
 const USER_KEY = "samvad_auth_user";
+const LOGGED_OUT_KEY = "samvad_explicit_logout";
 
 // Default standard user matching user's ChatGPT profile screenshot
 export const DEFAULT_USER: User = {
@@ -56,7 +57,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(DEFAULT_USER);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        if (localStorage.getItem(LOGGED_OUT_KEY) === "true") {
+          return null;
+        }
+        const storedUser = localStorage.getItem(USER_KEY);
+        if (storedUser) {
+          return JSON.parse(storedUser);
+        }
+      } catch {}
+    }
+    return DEFAULT_USER;
+  });
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -65,31 +79,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Restore session from localStorage on mount
     try {
+      if (localStorage.getItem(LOGGED_OUT_KEY) === "true") {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
       const storedToken = localStorage.getItem(TOKEN_KEY);
       const storedUser = localStorage.getItem(USER_KEY);
 
-      if (storedToken && storedUser) {
+      if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        startTransition(() => {
-          setUser(parsedUser);
+        setUser(parsedUser);
+        if (storedToken) {
           setToken(storedToken);
-        });
-
-        // Validate token against live backend
-        getCurrentUser(storedToken)
-          .then((verified) => {
-            setUser(verified);
-            localStorage.setItem(USER_KEY, JSON.stringify(verified));
-          })
-          .catch(() => {
-            // Keep cached user if offline, or logout if explicitly revoked
-          });
+          // Validate token against live backend
+          getCurrentUser(storedToken)
+            .then((verified) => {
+              setUser(verified);
+              localStorage.setItem(USER_KEY, JSON.stringify(verified));
+            })
+            .catch(() => {
+              // Keep cached user if offline
+            });
+        }
       } else {
-        // Fallback default user for instant high-class UX
-        startTransition(() => setUser(DEFAULT_USER));
+        // Persist default user session so it stays solid across all pages and refreshes
+        setUser(DEFAULT_USER);
+        localStorage.setItem(USER_KEY, JSON.stringify(DEFAULT_USER));
       }
     } catch {
-      startTransition(() => setUser(DEFAULT_USER));
+      setUser(DEFAULT_USER);
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: LoginPayload) => {
     setIsLoading(true);
     try {
+      localStorage.removeItem(LOGGED_OUT_KEY);
       const resp = await loginUser(credentials);
       setUser(resp.user);
       setToken(resp.token);
@@ -121,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = async (credentials: SignupPayload) => {
     setIsLoading(true);
     try {
+      localStorage.removeItem(LOGGED_OUT_KEY);
       const resp = await signupUser(credentials);
       setUser(resp.user);
       setToken(resp.token);
@@ -135,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async (payload: GoogleAuthPayload) => {
     setIsLoading(true);
     try {
+      localStorage.removeItem(LOGGED_OUT_KEY);
       const resp = await apiLoginWithGoogle(payload);
       setUser(resp.user);
       setToken(resp.token);
@@ -154,6 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.setItem(LOGGED_OUT_KEY, "true");
   };
 
   const updateProfile = async (data: ProfileUpdatePayload) => {

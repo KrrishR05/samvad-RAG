@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/client";
 import type { PipelineStatusResponse, RetrieverStrategy } from "@/types/api";
 import { AppShell, type SidebarSessionItem } from "@/components/layout/AppShell";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { QueryComposer } from "@/components/workspace/QueryComposer";
 import {
   ResearchMessage,
@@ -20,7 +21,6 @@ import {
   DocumentsIcon,
   InspectorToggleIcon,
   SamvadLogo,
-  SettingsIcon,
 } from "@/components/ui/Icons";
 
 interface ResearchSession {
@@ -56,8 +56,7 @@ export default function ResearchWorkspacePage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsHydrated, setSessionsHydrated] = useState(false);
 
-  const [pipelineStatus, setPipelineStatus] =
-    useState<PipelineStatusResponse | null>(null);
+  const { pipelineStatus } = useKnowledgeBase();
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [inspectedTurnId, setInspectedTurnId] = useState<string | null>(null);
   const [inspectorTab, setInspectorTab] = useState<"evidence" | "pipeline">(
@@ -131,13 +130,6 @@ export default function ResearchWorkspacePage() {
     }
   }, [sessions, sessionsHydrated]);
 
-  // Fetch live backend capabilities
-  useEffect(() => {
-    getPipelineStatus()
-      .then(setPipelineStatus)
-      .catch(() => setPipelineStatus(null));
-  }, []);
-
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeSessionId) ?? sessions[0] ?? null,
     [sessions, activeSessionId]
@@ -156,36 +148,66 @@ export default function ResearchWorkspacePage() {
     activeSession?.turns.some((t) => t.isLoading)
   );
 
+  const lastActiveSessionIdRef = useRef<string | null>(null);
+
   const handleNewSession = useCallback(() => {
+    if (activeSessionId) {
+      lastActiveSessionIdRef.current = activeSessionId;
+    }
     const fresh = createEmptySession();
     setSessions((prev) => [fresh, ...prev]);
     setActiveSessionId(fresh.id);
     setInspectedTurnId(null);
     setSelectedSourceIdx(null);
-  }, []);
+  }, [activeSessionId]);
 
   const handleSelectSession = useCallback((id: string) => {
+    if (activeSessionId && activeSessionId !== id) {
+      lastActiveSessionIdRef.current = activeSessionId;
+    }
     setActiveSessionId(id);
     setInspectedTurnId(null);
     setSelectedSourceIdx(null);
-  }, []);
+  }, [activeSessionId]);
 
   const handleDeleteSession = useCallback(
-    (id: string) => {
-      setSessions((prev) => {
-        const remaining = prev.filter((s) => s.id !== id);
-        if (remaining.length === 0) {
-          const fresh = createEmptySession();
-          setActiveSessionId(fresh.id);
-          return [fresh];
-        }
-        if (activeSessionId === id) {
-          setActiveSessionId(remaining[0].id);
-        }
-        return remaining;
-      });
+    (idToDelete: string) => {
+      const indexToDelete = sessions.findIndex((s) => s.id === idToDelete);
+      const remaining = sessions.filter((s) => s.id !== idToDelete);
+
+      if (remaining.length === 0) {
+        // If no research session remains, stay in a fresh new session
+        const fresh = createEmptySession();
+        setSessions([fresh]);
+        setActiveSessionId(fresh.id);
+        setInspectedTurnId(null);
+        setSelectedSourceIdx(null);
+        lastActiveSessionIdRef.current = null;
+        return;
+      }
+
+      setSessions(remaining);
+
+      // If the deleted session was the currently active one:
+      if (activeSessionId === idToDelete) {
+        // Revert to the last used research session if it still exists in the remaining list
+        const lastUsedId = lastActiveSessionIdRef.current;
+        const lastUsedSession =
+          lastUsedId && lastUsedId !== idToDelete
+            ? remaining.find((s) => s.id === lastUsedId)
+            : null;
+
+        // Fallback to the adjacent session in the list
+        const fallbackSession =
+          remaining[Math.min(Math.max(0, indexToDelete), remaining.length - 1)];
+
+        const targetSession = lastUsedSession || fallbackSession;
+        setActiveSessionId(targetSession.id);
+        setInspectedTurnId(null);
+        setSelectedSourceIdx(null);
+      }
     },
-    [activeSessionId]
+    [sessions, activeSessionId]
   );
 
   const handleInspectTurn = useCallback(
@@ -391,9 +413,9 @@ export default function ResearchWorkspacePage() {
               href="/documents"
               className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono-tech bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:border-[var(--border-default)] transition-colors"
             >
-              <span>{pipelineStatus.indexed_documents} docs</span>
+              <span suppressHydrationWarning>{pipelineStatus.indexed_documents} docs</span>
               <span className="text-[var(--text-muted)]">/</span>
-              <span>{pipelineStatus.indexed_chunks} chunks</span>
+              <span suppressHydrationWarning>{pipelineStatus.indexed_chunks} chunks</span>
             </Link>
           )}
           <button
@@ -436,55 +458,31 @@ export default function ResearchWorkspacePage() {
                   </p>
                 </div>
 
-                {/* Live Setup Check Banner (shown honestly only if needed) */}
-                {pipelineStatus &&
-                  (!pipelineStatus.retrieval_ready ||
-                    !pipelineStatus.llm_configured) && (
-                    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] p-4 space-y-3">
-                      <p className="text-xs font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
-                        Workspace Readiness
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <Link
-                          href="/documents"
-                          className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 hover:border-[var(--accent-border)] transition-colors flex items-start gap-2.5"
-                        >
-                          <DocumentsIcon className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-[var(--text-primary)]">
-                              {pipelineStatus.retrieval_ready
-                                ? `${pipelineStatus.indexed_documents} Documents Indexed`
-                                : "Upload Documents to Index"}
-                            </p>
-                            <p className="text-[var(--text-muted)] mt-0.5">
-                              {pipelineStatus.retrieval_ready
-                                ? `${pipelineStatus.indexed_chunks} searchable chunks ready.`
-                                : "PDF, DOCX, Markdown, TXT, HTML, and JSON supported."}
-                            </p>
-                          </div>
-                        </Link>
-
-                        <Link
-                          href="/settings"
-                          className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 hover:border-[var(--accent-border)] transition-colors flex items-start gap-2.5"
-                        >
-                          <SettingsIcon className="w-4 h-4 text-[var(--accent)] shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-[var(--text-primary)]">
-                              {pipelineStatus.llm_configured
-                                ? `LLM Connected (${pipelineStatus.llm_model})`
-                                : "Configure LLM Generator"}
-                            </p>
-                            <p className="text-[var(--text-muted)] mt-0.5">
-                              {pipelineStatus.llm_configured
-                                ? `Provider: ${pipelineStatus.llm_provider}`
-                                : "Add OpenAI, Ollama, or Gemini credentials in backend/.env."}
-                            </p>
-                          </div>
-                        </Link>
+                {/* Workspace Readiness: Navigate through document upload */}
+                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] p-4 space-y-3">
+                  <p className="text-xs font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
+                    Workspace Readiness
+                  </p>
+                  <Link
+                    href="/documents"
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 hover:border-[var(--accent-border)] hover:bg-[var(--bg-hover)] transition-all flex items-center justify-between gap-3 group"
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <DocumentsIcon className="w-5 h-5 text-[var(--accent)] shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors">
+                          Upload Documents to Index
+                        </p>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          PDF, DOCX, Markdown, TXT, HTML, and JSON supported.
+                        </p>
                       </div>
                     </div>
-                  )}
+                    <span className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] group-hover:bg-[var(--accent)] group-hover:text-white transition-all">
+                      Upload Documents &rarr;
+                    </span>
+                  </Link>
+                </div>
 
                 {/* Starter Prompts */}
                 <div className="space-y-2.5">

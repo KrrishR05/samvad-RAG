@@ -23,6 +23,39 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+export function getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const headers: Record<string, string> = {};
+  try {
+    const token = localStorage.getItem("samvad_auth_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    const storedUser = localStorage.getItem("samvad_auth_user");
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      if (parsed?.id) {
+        headers["X-User-ID"] = parsed.id;
+      }
+    }
+    if (!headers["X-User-ID"]) {
+      if (localStorage.getItem("samvad_explicit_logout") !== "true") {
+        headers["X-User-ID"] = "usr_krrish_default";
+      } else {
+        let guestId = localStorage.getItem("samvad_guest_id");
+        if (!guestId) {
+          guestId = "guest_" + Math.random().toString(36).substring(2, 10);
+          localStorage.setItem("samvad_guest_id", guestId);
+        }
+        headers["X-User-ID"] = guestId;
+      }
+    }
+  } catch {
+    // ignore storage restrictions
+  }
+  return headers;
+}
+
 export class ApiClientError extends Error {
   constructor(
     message: string,
@@ -36,9 +69,14 @@ export class ApiClientError extends Error {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const authHeaders = getAuthHeaders();
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
     ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders,
+      ...options?.headers,
+    },
   });
 
   if (!res.ok) {
@@ -86,8 +124,12 @@ export async function submitVoiceQuery(
   if (retrieverStrategy) formData.append("retriever_strategy", retrieverStrategy);
   if (topK !== undefined) formData.append("top_k", String(topK));
 
+  const authHeaders = getAuthHeaders();
   const res = await fetch(`${API_BASE}/api/v1/voice/query`, {
     method: "POST",
+    headers: {
+      ...authHeaders,
+    },
     body: formData,
   });
 
@@ -149,8 +191,12 @@ export async function uploadDocument(
     formData.append("chunk_overlap", String(options.chunkOverlap));
   }
 
+  const authHeaders = getAuthHeaders();
   const res = await fetch(`${API_BASE}/api/v1/documents`, {
     method: "POST",
+    headers: {
+      ...authHeaders,
+    },
     body: formData,
   });
 

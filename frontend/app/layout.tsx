@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
+import { KnowledgeBaseProvider } from "@/context/KnowledgeBaseContext";
 
 export const metadata: Metadata = {
   title: "SAMVAD — Evidence-Grounded Multilingual RAG Workbench",
@@ -27,7 +28,9 @@ export default function RootLayout({
     >
       <body className="min-h-screen antialiased selection:bg-[var(--accent-soft)] selection:text-[var(--text-primary)]">
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <KnowledgeBaseProvider>{children}</KnowledgeBaseProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

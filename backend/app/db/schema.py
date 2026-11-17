@@ -11,9 +11,16 @@ from app.db.connection import DatabaseManager
 
 logger = logging.getLogger("samvad.db.schema")
 
+_SCHEMA_INITIALIZED = False
 
-def init_database_tables(db: DatabaseManager) -> None:
-    """Initialize all core application tables and indexes."""
+
+def init_database_tables(db: DatabaseManager, force: bool = False) -> None:
+    """Initialize all core application tables and indexes once."""
+    global _SCHEMA_INITIALIZED
+    if _SCHEMA_INITIALIZED and not force:
+        return
+    _SCHEMA_INITIALIZED = True
+
     logger.info("Initializing SAMVAD database schema (PostgreSQL=%s)...", db.is_postgres)
 
     # Optional PostgreSQL extensions
@@ -34,8 +41,9 @@ def init_database_tables(db: DatabaseManager) -> None:
         """
         CREATE TABLE IF NOT EXISTS documents (
             doc_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL DEFAULT 'usr_krrish_default',
             filename TEXT NOT NULL,
-            content_hash TEXT NOT NULL UNIQUE,
+            content_hash TEXT NOT NULL,
             media_type TEXT NOT NULL,
             language TEXT,
             status TEXT NOT NULL,
@@ -48,6 +56,7 @@ def init_database_tables(db: DatabaseManager) -> None:
 
         CREATE TABLE IF NOT EXISTS chunks (
             chunk_id TEXT PRIMARY KEY,
+            user_id TEXT DEFAULT 'usr_krrish_default',
             parent_document_id TEXT NOT NULL,
             text TEXT NOT NULL,
             language TEXT,
@@ -63,6 +72,29 @@ def init_database_tables(db: DatabaseManager) -> None:
         CREATE INDEX IF NOT EXISTS idx_chunks_parent ON chunks(parent_document_id);
         """
     )
+
+    # Migrate existing documents and chunks tables to include user_id if not present
+    if db.is_postgres:
+        try:
+            db.execute("ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS user_id TEXT NOT NULL DEFAULT 'usr_krrish_default';")
+            db.execute("ALTER TABLE public.chunks ADD COLUMN IF NOT EXISTS user_id TEXT DEFAULT 'usr_krrish_default';")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_documents_user ON public.documents(user_id);")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_chunks_user ON public.chunks(user_id);")
+        except Exception as exc:
+            logger.debug("PostgreSQL column user_id check: %s", exc)
+    else:
+        try:
+            # SQLite safe column addition
+            doc_cols = [r["name"] for r in db.fetch_all("PRAGMA table_info(documents);")]
+            if "user_id" not in doc_cols:
+                db.execute("ALTER TABLE documents ADD COLUMN user_id TEXT NOT NULL DEFAULT 'usr_krrish_default';")
+            chunk_cols = [r["name"] for r in db.fetch_all("PRAGMA table_info(chunks);")]
+            if "user_id" not in chunk_cols:
+                db.execute("ALTER TABLE chunks ADD COLUMN user_id TEXT DEFAULT 'usr_krrish_default';")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_documents_user ON documents(user_id);")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_chunks_user ON chunks(user_id);")
+        except Exception as exc:
+            logger.debug("SQLite column user_id check: %s", exc)
 
     # 2. Authentication & Users
     db.execute_script(

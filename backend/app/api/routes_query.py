@@ -7,9 +7,10 @@ Text-based query endpoint.
 from __future__ import annotations
 
 import json
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
+from app.api.routes_documents import get_request_user_id
 from app.core.logging import current_request_id, sanitize_request_id
 from app.pipeline.orchestrator import get_orchestrator
 from app.schemas.request import QueryRequest
@@ -23,7 +24,11 @@ router = APIRouter(prefix="/api/v1", tags=["query"])
     response_model=QueryResponse,
     summary="Submit a text query",
 )
-async def submit_query(request: Request, body: QueryRequest) -> QueryResponse:
+async def submit_query(
+    request: Request,
+    body: QueryRequest,
+    user_id: str = Depends(get_request_user_id),
+) -> QueryResponse:
     """
     Submit a natural-language text query to the SAMVAD pipeline.
 
@@ -44,6 +49,7 @@ async def submit_query(request: Request, body: QueryRequest) -> QueryResponse:
             language=body.language,
             retriever_strategy=body.retriever_strategy,
             top_k=body.top_k,
+            user_id=user_id,
         )
     finally:
         current_request_id.reset(token)

@@ -187,6 +187,7 @@ class SamvadRuntime:
         chunk_strategy: ChunkStrategy = ChunkStrategy.SLIDING_WINDOW,
         chunk_size: int = 800,
         chunk_overlap: int = 120,
+        user_id: str = "usr_krrish_default",
     ) -> tuple[DocumentRecord, bool, int]:
         """
         Parse, deduplicate, chunk, persist, and index a document.
@@ -206,10 +207,11 @@ class SamvadRuntime:
             media_type=loaded.media_type,
             language=loaded.language,
             metadata=loaded.metadata,
+            user_id=user_id,
         )
         if not created:
-            total = len(self.document_store.get_all_chunks())
-            return record, True, total
+            user_chunks = len(self.document_store.get_all_chunks(user_id=user_id))
+            return record, True, user_chunks
 
         try:
             chunks = chunk_text(
@@ -220,12 +222,19 @@ class SamvadRuntime:
                 chunk_overlap=chunk_overlap,
                 language=loaded.language,
             )
-            self.document_store.save_chunks(record.doc_id, chunks)
-            total_indexed = await self.rebuild_indexes()
+            # Attach user_id to metadata extra
+            for c in chunks:
+                if c.metadata.extra is None:
+                    c.metadata.extra = {}
+                c.metadata.extra["user_id"] = user_id
+
+            self.document_store.save_chunks(record.doc_id, chunks, user_id=user_id)
+            await self.rebuild_indexes()
             self.document_store.update_status(record.doc_id, DocumentStatus.INDEXED)
-            updated = self.document_store.get_document(record.doc_id)
+            updated = self.document_store.get_document(record.doc_id, user_id=user_id)
             assert updated is not None
-            return updated, False, total_indexed
+            user_chunks = len(self.document_store.get_all_chunks(user_id=user_id))
+            return updated, False, user_chunks
         except Exception as exc:
             self.document_store.update_status(
                 record.doc_id,
@@ -234,13 +243,16 @@ class SamvadRuntime:
             )
             raise
 
-    async def delete_document(self, doc_id: str) -> tuple[bool, int]:
+    async def delete_document(
+        self, doc_id: str, user_id: Optional[str] = None
+    ) -> tuple[bool, int]:
         """Delete a document and rebuild active indexes."""
-        deleted = self.document_store.delete_document(doc_id)
+        deleted = self.document_store.delete_document(doc_id, user_id=user_id)
         if not deleted:
-            return False, len(self.document_store.get_all_chunks())
-        total_indexed = await self.rebuild_indexes()
-        return True, total_indexed
+            return False, 0
+        total_remaining = await self.rebuild_indexes()
+        user_remaining = len(self.document_store.get_all_chunks(user_id=user_id)) if user_id else total_remaining
+        return True, user_remaining
 
 
 _runtime: Optional[SamvadRuntime] = None

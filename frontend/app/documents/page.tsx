@@ -16,6 +16,7 @@ import type {
   DocumentStatus,
 } from "@/types/api";
 import { AppShell } from "@/components/layout/AppShell";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import {
   AlertIcon,
   CheckIcon,
@@ -54,10 +55,20 @@ function formatDate(iso: string) {
 }
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<DocumentRecord[]>([]);
-  const [totalChunks, setTotalChunks] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    documents,
+    totalChunks,
+    isLoading,
+    isLoaded,
+    error: kbError,
+    refresh: fetchDocs,
+    upload: uploadDocToKb,
+    remove: removeDocFromKb,
+  } = useKnowledgeBase();
+
+  const [localError, setLocalError] = useState<string | null>(null);
+  const error = localError || kbError;
+  const loading = isLoading && !isLoaded;
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,29 +115,6 @@ export default function DocumentsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchDocs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await listDocuments();
-      setDocuments(res.documents);
-      setTotalChunks(res.total_chunks);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load documents."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      void fetchDocs();
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [fetchDocs]);
-
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -137,7 +125,7 @@ export default function DocumentsPage() {
 
     try {
       for (const file of Array.from(files)) {
-        const res = await uploadDocument(file, {
+        const res = await uploadDocToKb(file, {
           language: language || undefined,
           chunkStrategy,
           chunkSize,
@@ -170,7 +158,6 @@ export default function DocumentsPage() {
           text: `Indexed ${indexedCount} new document(s); ${dupCount} duplicate(s) preserved.`,
         });
       }
-      await fetchDocs();
     } catch (err) {
       setUploadNotice({
         type: "error",
@@ -185,14 +172,13 @@ export default function DocumentsPage() {
   const handleDelete = async (docId: string) => {
     setDeletingId(docId);
     try {
-      await deleteDocument(docId);
+      await removeDocFromKb(docId);
       setConfirmDeleteId(null);
       if (selectedDoc?.doc_id === docId) {
         setSelectedDoc(null);
       }
-      await fetchDocs();
     } catch (err) {
-      setError(
+      setLocalError(
         err instanceof Error ? err.message : "Failed to delete document."
       );
     } finally {
@@ -245,7 +231,7 @@ The propulsion module continues to operate in lunar orbit carrying the SHAPE (Sp
         type: "text/plain",
       });
 
-      const res = await uploadDocument(file, {
+      const res = await uploadDocToKb(file, {
         language: "en",
         chunkStrategy: "sliding_window",
         chunkSize: 600,
@@ -258,7 +244,6 @@ The propulsion module continues to operate in lunar orbit carrying the SHAPE (Sp
           ? "Sample dossier is already indexed in your knowledge base."
           : `Sample ISRO Chandrayaan-3 Dossier successfully indexed (${res.total_chunks_indexed} chunks).`,
       });
-      await fetchDocs();
     } catch (err) {
       setUploadNotice({
         type: "error",
@@ -299,11 +284,11 @@ The propulsion module continues to operate in lunar orbit carrying the SHAPE (Sp
           </button>
           <button
             type="button"
-            onClick={fetchDocs}
-            disabled={loading}
+            onClick={() => void fetchDocs(false)}
+            disabled={isLoading}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
-            <RefreshIcon className={loading ? "animate-spin" : ""} />
+            <RefreshIcon className={isLoading ? "animate-spin" : ""} />
             <span>Refresh</span>
           </button>
         </div>

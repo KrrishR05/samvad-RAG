@@ -81,12 +81,13 @@ export function QueryComposer({
     }
   }, [recState, audioBlob, language, strategy, topK, onSubmitVoice, resetRecorder]);
 
-  // Auto-resize textarea cleanly up to ~180px
+  // Keep textarea in compact normal position: min 38px, capped at 72px with scrollbar
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    const targetHeight = Math.min(Math.max(el.scrollHeight, 38), 72);
+    el.style.height = `${targetHeight}px`;
   }, [query]);
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -112,7 +113,7 @@ export function QueryComposer({
   const isRecording = recState === "recording";
 
   return (
-    <div className="shrink-0 min-h-[124px] border-t border-[var(--border-subtle)] bg-[var(--bg-canvas)]/95 backdrop-blur-sm px-4 py-2.5 flex flex-col justify-center">
+    <div className="shrink-0 border-t border-[var(--border-subtle)] bg-[var(--bg-canvas)]/95 backdrop-blur-sm px-4 py-2.5 flex flex-col justify-center">
       <form
         onSubmit={handleSubmit}
         className="max-w-3xl mx-auto w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-panel)] focus-within:border-[var(--accent-border)] focus-within:shadow-[0_0_20px_rgba(167,139,250,0.1)] transition-all"
@@ -141,7 +142,8 @@ export function QueryComposer({
               ? "Listening... spoken words will appear here live as you talk."
               : "Ask a research question across your indexed documents..."
           }
-          className="w-full resize-none bg-transparent px-3.5 pt-2 pb-1 text-[13.5px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-60"
+          className="w-full resize-none bg-transparent px-3.5 pt-2 pb-1 text-[13.5px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-60 overflow-y-auto max-h-[72px]"
+          style={{ minHeight: "38px" }}
         />
 
         {/* Bottom Utility Strip */}

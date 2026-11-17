@@ -159,7 +159,12 @@ class DatabaseManager:
         if self.is_postgres:
             assert self._pg_pool is not None, "PostgreSQL connection pool not initialized."
             conn = self._pg_pool.getconn()
-            if getattr(conn, "closed", 0) != 0:
+            try:
+                if getattr(conn, "closed", 0) != 0:
+                    raise psycopg2.OperationalError("Closed connection")
+                with conn.cursor() as probe_cur:
+                    probe_cur.execute("SELECT 1;")
+            except Exception:
                 try:
                     self._pg_pool.putconn(conn, close=True)
                 except Exception:

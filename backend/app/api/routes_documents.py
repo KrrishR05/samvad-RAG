@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from app.core.errors import InputValidationError, PayloadTooLargeError
@@ -15,6 +15,26 @@ from app.pipeline.runtime import get_runtime
 from app.schemas.pipeline import ChunkStrategy
 
 router = APIRouter(prefix="/api/v1", tags=["documents"])
+
+
+def get_request_user_id(
+    authorization: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-ID"),
+) -> str:
+    """Resolve active user ID: Bearer token -> X-User-ID -> guest fallback."""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:].strip()
+        try:
+            from app.core.auth_store import get_auth_store
+            store = get_auth_store()
+            user = store.get_user_from_token(token)
+            if user:
+                return user.id
+        except Exception:
+            pass
+    if x_user_id and x_user_id.strip():
+        return x_user_id.strip()
+    return "guest_anonymous"
 
 
 class DocumentUploadResponse(BaseModel):
@@ -77,6 +97,7 @@ async def upload_document(
     chunk_strategy: ChunkStrategy = Form(default=ChunkStrategy.SLIDING_WINDOW),
     chunk_size: int = Form(default=800),
     chunk_overlap: int = Form(default=120),
+    user_id: str = Depends(get_request_user_id),
 ) -> DocumentUploadResponse:
     runtime = get_runtime()
     if not file.filename:
@@ -98,6 +119,7 @@ async def upload_document(
         chunk_strategy=chunk_strategy,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
+        user_id=user_id,
     )
     return DocumentUploadResponse(
         document=record,
@@ -111,9 +133,11 @@ async def upload_document(
     response_model=DocumentListResponse,
     summary="List indexed and registered documents",
 )
-async def list_documents() -> DocumentListResponse:
+async def list_documents(
+    user_id: str = Depends(get_request_user_id),
+) -> DocumentListResponse:
     runtime = get_runtime()
-    docs = runtime.document_store.list_documents()
+    docs = runtime.document_store.list_documents(user_id=user_id)
     total_chunks = sum(doc.chunk_count for doc in docs if doc.status == DocumentStatus.INDEXED)
     return DocumentListResponse(
         documents=docs,
@@ -127,9 +151,12 @@ async def list_documents() -> DocumentListResponse:
     response_model=DocumentDeleteResponse,
     summary="Delete a document and rebuild retrieval indexes",
 )
-async def delete_document(doc_id: str) -> DocumentDeleteResponse:
+async def delete_document(
+    doc_id: str,
+    user_id: str = Depends(get_request_user_id),
+) -> DocumentDeleteResponse:
     runtime = get_runtime()
-    deleted, total_chunks = await runtime.delete_document(doc_id)
+    deleted, total_chunks = await runtime.delete_document(doc_id, user_id=user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found.")
     return DocumentDeleteResponse(
@@ -144,9 +171,12 @@ async def delete_document(doc_id: str) -> DocumentDeleteResponse:
     response_model=DocumentChunksResponse,
     summary="List all chunks associated with a specific document",
 )
-async def get_document_chunks(doc_id: str) -> DocumentChunksResponse:
+async def get_document_chunks(
+    doc_id: str,
+    user_id: str = Depends(get_request_user_id),
+) -> DocumentChunksResponse:
     runtime = get_runtime()
-    chunks = runtime.document_store.get_chunks_for_document(doc_id)
+    chunks = runtime.document_store.get_chunks_for_document(doc_id, user_id=user_id)
     return DocumentChunksResponse(
         doc_id=doc_id,
         total_chunks=len(chunks),
@@ -170,17 +200,19 @@ async def get_document_chunks(doc_id: str) -> DocumentChunksResponse:
     response_model=PipelineStatusResponse,
     summary="Inspect live configured backend pipeline capabilities",
 )
-async def get_pipeline_status() -> PipelineStatusResponse:
+async def get_pipeline_status(
+    user_id: str = Depends(get_request_user_id),
+) -> PipelineStatusResponse:
     runtime = get_runtime()
-    docs = runtime.document_store.list_documents()
-    indexed_docs = sum(1 for doc in docs if doc.status == DocumentStatus.INDEXED)
-    total_chunks = len(runtime.document_store.get_all_chunks())
+    user_docs = runtime.document_store.list_documents(user_id=user_id)
+    indexed_docs = sum(1 for doc in user_docs if doc.status == DocumentStatus.INDEXED)
+    total_user_chunks = sum(doc.chunk_count for doc in user_docs if doc.status == DocumentStatus.INDEXED)
     orch = runtime.orchestrator
     gen = orch.generator
     return PipelineStatusResponse(
-        retrieval_ready=total_chunks > 0,
+        retrieval_ready=total_user_chunks > 0,
         indexed_documents=indexed_docs,
-        indexed_chunks=total_chunks,
+        indexed_chunks=total_user_chunks,
         available_strategies=sorted(orch.retrievers.keys()),
         embedding_provider=runtime.embedding_provider.model_name,
         embedding_dimension=runtime.embedding_provider.dimension,

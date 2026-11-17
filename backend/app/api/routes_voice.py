@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 
+from app.api.routes_documents import get_request_user_id
 from app.core.config import get_settings
 from app.core.logging import current_request_id, sanitize_request_id
 from app.core.upload_validation import read_validated_audio_upload
@@ -58,6 +59,7 @@ async def submit_voice_query(
     language: Optional[str] = Form(default=None),
     retriever_strategy: Optional[str] = Form(default=None),
     top_k: Optional[int] = Form(default=None),
+    user_id: str = Depends(get_request_user_id),
 ) -> QueryResponse:
     """
     Submit an audio recording to the SAMVAD voice pipeline.
@@ -85,6 +87,7 @@ async def submit_voice_query(
             language=language,
             retriever_strategy=retriever_strategy,
             top_k=top_k,
+            user_id=user_id,
         )
     finally:
         current_request_id.reset(token)

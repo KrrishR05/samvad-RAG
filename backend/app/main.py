@@ -68,9 +68,10 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
+        allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:[0-9]+)?",
         allow_credentials=True,
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS", "PATCH"],
-        allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-API-Key"],
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # --- Security & Rate Limiting (Phase 4) ---

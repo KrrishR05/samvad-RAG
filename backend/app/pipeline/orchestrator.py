@@ -147,6 +147,7 @@ class PipelineOrchestrator:
         language: Optional[str] = None,
         retriever_strategy: Optional[str] = None,
         top_k: Optional[int] = None,
+        user_id: Optional[str] = None,
     ) -> QueryResponse:
         """
         Execute the full voice pipeline:
@@ -205,6 +206,7 @@ class PipelineOrchestrator:
             language=transcription.language or language,
             retriever_strategy=retriever_strategy,
             top_k=top_k,
+            user_id=user_id,
         )
 
         combined_stages = [
@@ -238,6 +240,7 @@ class PipelineOrchestrator:
         language: Optional[str] = None,
         retriever_strategy: Optional[str] = None,
         top_k: Optional[int] = None,
+        user_id: Optional[str] = None,
     ) -> QueryResponse:
         """Execute the text RAG pipeline with bounded timeouts and real metrics."""
         rid = sanitize_request_id(request_id)
@@ -255,6 +258,7 @@ class PipelineOrchestrator:
                     retriever_strategy=retriever_strategy,
                     top_k=top_k,
                     cfg=cfg,
+                    user_id=user_id,
                 ),
                 timeout=cfg.pipeline_timeout_seconds,
             )
@@ -322,6 +326,7 @@ class PipelineOrchestrator:
         top_k: Optional[int],
         cfg: Settings,
         on_event: Optional[Callable[[dict[str, Any]], Any]] = None,
+        user_id: Optional[str] = None,
     ) -> QueryResponse:
         t0 = time.perf_counter()
         ps = PipelineState(request_id=rid)
@@ -477,6 +482,22 @@ class PipelineOrchestrator:
                     top_k=retrieval_k,
                     results=raw_chunks,
                 )
+
+        # Enforce multi-tenant document isolation: only evaluate evidence belonging to this user
+        if user_id:
+            def _belongs_to_user(chunk_item: ScoredChunk) -> bool:
+                meta = getattr(chunk_item, "metadata", None)
+                if not meta:
+                    return False
+                extra = getattr(meta, "extra", {}) or {}
+                chunk_uid = extra.get("user_id")
+                if chunk_uid == user_id:
+                    return True
+                if not chunk_uid and user_id == "usr_krrish_default":
+                    return True
+                return False
+
+            raw_chunks = [c for c in raw_chunks if _belongs_to_user(c)]
 
         if about_samvad:
             raw_chunks.insert(0, SAMVAD_CANONICAL_CHUNK)

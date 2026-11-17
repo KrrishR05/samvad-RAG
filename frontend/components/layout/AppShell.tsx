@@ -9,6 +9,7 @@ import { useTheme } from "@/components/layout/ThemeProvider";
 import { UserAccountMenu } from "@/components/layout/UserAccountMenu";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { useAuth } from "@/context/AuthContext";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import {
   AnalyticsIcon,
   DocumentsIcon,
@@ -60,37 +61,18 @@ export function AppShell({
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
-  const [fetchedStatus, setFetchedStatus] =
-    useState<PipelineStatusResponse | null>(null);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(true);
+
+  const { totalDocuments, pipelineStatus: kbPipelineStatus } =
+    useKnowledgeBase();
 
   const status =
-    externalStatus !== undefined ? externalStatus : fetchedStatus;
+    externalStatus !== undefined
+      ? externalStatus
+      : kbPipelineStatus;
 
+  // Single health check on mount
   useEffect(() => {
-    if (externalStatus !== undefined) {
-      return;
-    }
-    let mounted = true;
-    Promise.allSettled([healthCheck(), getPipelineStatus()]).then(
-      ([healthRes, pipeRes]) => {
-        if (!mounted) return;
-        setBackendOnline(
-          healthRes.status === "fulfilled" && healthRes.value.status === "healthy"
-        );
-        if (pipeRes.status === "fulfilled") {
-          setFetchedStatus(pipeRes.value);
-        }
-      }
-    );
-    return () => {
-      mounted = false;
-    };
-  }, [externalStatus, pathname]);
-
-  // Also check /health once even if externalStatus was passed
-  useEffect(() => {
-    if (externalStatus === undefined) return;
     let mounted = true;
     healthCheck()
       .then((res) => {
@@ -102,7 +84,7 @@ export function AppShell({
     return () => {
       mounted = false;
     };
-  }, [externalStatus]);
+  }, []);
 
   const navItems = [
     { href: "/", label: "Workspace", icon: WorkspaceIcon },
@@ -110,7 +92,7 @@ export function AppShell({
       href: "/documents",
       label: "Knowledge Base",
       icon: DocumentsIcon,
-      badge: status ? `${status.indexed_documents}` : undefined,
+      badge: totalDocuments > 0 ? `${totalDocuments}` : undefined,
     },
     { href: "/architecture", label: "Pipeline Explorer", icon: PipelineIcon },
     { href: "/analytics", label: "Analytics", icon: AnalyticsIcon },
@@ -248,7 +230,10 @@ export function AppShell({
                     {onDeleteSession && (
                       <button
                         type="button"
-                        onClick={() => onDeleteSession(s.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(s.id);
+                        }}
                         title="Delete session"
                         className="opacity-0 group-hover:opacity-100 p-1 rounded text-[var(--text-muted)] hover:text-[var(--status-error)] transition-opacity cursor-pointer"
                       >
@@ -286,13 +271,13 @@ export function AppShell({
               </span>
             </span>
             {status && (
-              <span className="font-mono-tech text-[10px] text-[var(--text-muted)]">
+              <span suppressHydrationWarning className="font-mono-tech text-[10px] text-[var(--text-muted)]">
                 {status.indexed_chunks} chks
               </span>
             )}
           </div>
           {status && (
-            <div className="flex items-center justify-between text-[10px] font-mono-tech">
+            <div suppressHydrationWarning className="flex items-center justify-between text-[10px] font-mono-tech">
               <div className="flex items-center gap-1.5 min-w-0 truncate">
                 <span
                   className={
@@ -393,7 +378,7 @@ export function AppShell({
           <div className="flex items-center gap-2">
             {headerActions}
             {!user && (
-              <div className="flex items-center gap-2 ml-1">
+              <div suppressHydrationWarning className="flex items-center gap-2 ml-1">
                 <button
                   type="button"
                   onClick={() => openAuthModal("login")}

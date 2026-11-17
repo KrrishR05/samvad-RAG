@@ -343,10 +343,11 @@ class AuthStore:
         with self._get_connection() as conn:
             row = conn.execute("SELECT * FROM pro_waitlist WHERE email = ?", (normalized,)).fetchone()
             if row:
-                pos = conn.execute(
-                    "SELECT COUNT(*) FROM pro_waitlist WHERE created_at <= ?",
+                count_row = conn.execute(
+                    "SELECT COUNT(*) as count FROM pro_waitlist WHERE created_at <= ?",
                     (row["created_at"],),
-                ).fetchone()[0]
+                ).fetchone()
+                pos = count_row["count"] if isinstance(count_row, dict) else count_row[0]
                 return {
                     "id": row["id"],
                     "email": row["email"],
@@ -365,7 +366,8 @@ class AuthStore:
                 (waitlist_id, normalized, name.strip() if name else None, user_id, now),
             )
             conn.commit()
-            pos = conn.execute("SELECT COUNT(*) FROM pro_waitlist").fetchone()[0]
+            count_row = conn.execute("SELECT COUNT(*) as count FROM pro_waitlist").fetchone()
+            pos = count_row["count"] if isinstance(count_row, dict) else count_row[0]
 
             return {
                 "id": waitlist_id,
@@ -386,7 +388,8 @@ class AuthStore:
 
     def get_waitlist_count(self) -> int:
         with self._get_connection() as conn:
-            return conn.execute("SELECT COUNT(*) FROM pro_waitlist").fetchone()[0]
+            count_row = conn.execute("SELECT COUNT(*) as count FROM pro_waitlist").fetchone()
+            return count_row["count"] if isinstance(count_row, dict) else count_row[0]
 
 
 _auth_store: Optional[AuthStore] = None
