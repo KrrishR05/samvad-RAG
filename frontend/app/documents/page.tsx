@@ -85,16 +85,11 @@ export default function DocumentsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Document Chunk Inspection Drawer
-  const [mounted, setMounted] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentRecord | null>(null);
   const [inspectChunks, setInspectChunks] = useState<ChunkItem[]>([]);
   const [inspectLoading, setInspectLoading] = useState(false);
   const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
   const [inspectFilter, setInspectFilter] = useState("");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Close inspector on Escape key
   useEffect(() => {
@@ -719,8 +714,7 @@ The propulsion module continues to operate in lunar orbit carrying the SHAPE (Sp
       </main>
 
       {/* SLIDE-OVER DOCUMENT CHUNK INSPECTION DRAWER (Rendered via Portal to document.body) */}
-      {mounted &&
-        selectedDoc &&
+      {selectedDoc &&
         createPortal(
           <div className="fixed inset-0 z-[100] overflow-hidden flex justify-end">
             {/* Dark Blur Backdrop */}
