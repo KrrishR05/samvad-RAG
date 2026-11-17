@@ -88,6 +88,8 @@ export function KnowledgeBaseProvider({
       const cached = localStorage.getItem(PIPELINE_STATUS_CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
+        // The cache is client-only state restored after mount.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPipelineStatus(parsed);
       }
     } catch {}
@@ -146,6 +148,8 @@ export function KnowledgeBaseProvider({
       setTotalChunks(0);
       setIsLoaded(false);
     }
+    // This effect synchronizes the knowledge base with the active user.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchKnowledgeBase(false);
   }, [currentUserId, fetchKnowledgeBase]);
 

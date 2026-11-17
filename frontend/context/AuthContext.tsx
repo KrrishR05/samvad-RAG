@@ -80,6 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Restore session from localStorage on mount
     try {
       if (localStorage.getItem(LOGGED_OUT_KEY) === "true") {
+        // The logged-out marker is client-only state restored after mount.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setUser(null);
         setIsLoading(false);
         return;
