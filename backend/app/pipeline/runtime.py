@@ -72,7 +72,7 @@ class SamvadRuntime:
         query_analyzer: Optional[QueryAnalyzer] = None,
     ) -> None:
         self.settings = settings or get_settings()
-        self.metrics_store = metrics_store or get_metrics_store()
+        self.metrics_store = metrics_store if metrics_store is not None else get_metrics_store()
         self.document_store = DocumentStore()
 
         self.embedding_provider: EmbeddingProvider = (
@@ -257,4 +257,3 @@ def set_runtime(runtime: Optional[SamvadRuntime]) -> None:
     global _runtime
     _runtime = runtime
     set_orchestrator(runtime.orchestrator if runtime is not None else None)
-

@@ -33,13 +33,19 @@ DEFAULT_MAX_RECORDS = 10_000
 class MetricsStore:
     """Thread-safe bounded in-memory & database-backed metrics store."""
 
-    def __init__(self, max_records: int = DEFAULT_MAX_RECORDS) -> None:
+    def __init__(
+        self,
+        max_records: int = DEFAULT_MAX_RECORDS,
+        *,
+        hydrate_from_db: bool = False,
+    ) -> None:
         if max_records <= 0:
             raise ValueError("max_records must be positive.")
         self._max_records = max_records
         self._records: deque[LatencyRecord] = deque(maxlen=max_records)
         self._lock = threading.Lock()
-        self._load_from_db()
+        if hydrate_from_db:
+            self._load_from_db()
 
     def _load_from_db(self) -> None:
         """Hydrate recent records from the database on startup."""
@@ -193,5 +199,5 @@ _store: Optional[MetricsStore] = None
 def get_metrics_store() -> MetricsStore:
     global _store
     if _store is None:
-        _store = MetricsStore()
+        _store = MetricsStore(hydrate_from_db=True)
     return _store
