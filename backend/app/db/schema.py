@@ -11,15 +11,18 @@ from app.db.connection import DatabaseManager
 
 logger = logging.getLogger("samvad.db.schema")
 
-_SCHEMA_INITIALIZED = False
+_SCHEMA_INITIALIZED_DATABASES: set[tuple[str, str]] = set()
 
 
 def init_database_tables(db: DatabaseManager, force: bool = False) -> None:
     """Initialize all core application tables and indexes once."""
-    global _SCHEMA_INITIALIZED
-    if _SCHEMA_INITIALIZED and not force:
+    database_key = (
+        ("postgres", db.database_url)
+        if db.is_postgres
+        else ("sqlite", str(db.sqlite_db_path.resolve()))
+    )
+    if database_key in _SCHEMA_INITIALIZED_DATABASES and not force:
         return
-    _SCHEMA_INITIALIZED = True
 
     logger.info("Initializing SAMVAD database schema (PostgreSQL=%s)...", db.is_postgres)
 
@@ -171,5 +174,5 @@ def init_database_tables(db: DatabaseManager, force: bool = False) -> None:
             except Exception as exc:
                 logger.debug("Enable RLS on %s: %s", table_name, exc)
 
+    _SCHEMA_INITIALIZED_DATABASES.add(database_key)
     logger.info("SAMVAD database schema initialized successfully.")
-
