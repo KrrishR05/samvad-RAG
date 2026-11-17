@@ -72,7 +72,9 @@ class SamvadRuntime:
         query_analyzer: Optional[QueryAnalyzer] = None,
     ) -> None:
         self.settings = settings or get_settings()
-        self.metrics_store = metrics_store if metrics_store is not None else get_metrics_store()
+        self.metrics_store = (
+            metrics_store if metrics_store is not None else get_metrics_store()
+        )
         self.document_store = DocumentStore()
 
         self.embedding_provider: EmbeddingProvider = (

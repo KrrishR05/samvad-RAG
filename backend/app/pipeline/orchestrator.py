@@ -127,7 +127,9 @@ class PipelineOrchestrator:
         self.grounding_guard = grounding_guard
         self.query_router = query_router
         self.retrieval_cache = retrieval_cache
-        self.metrics_store = metrics_store if metrics_store is not None else get_metrics_store()
+        self.metrics_store = (
+            metrics_store if metrics_store is not None else get_metrics_store()
+        )
         self.settings = settings
         cfg = settings or get_settings()
         self.context_optimizer = ContextOptimizer(
