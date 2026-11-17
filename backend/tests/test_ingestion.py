@@ -130,3 +130,23 @@ def test_document_store_lifecycle_dedup_and_delete(tmp_path):
     assert store.delete_document(rec1.doc_id) is True
     assert store.get_all_chunks() == []
 
+
+def test_document_store_initializes_each_database(tmp_path):
+    first_store = DocumentStore(tmp_path / "first.db")
+    second_store = DocumentStore(tmp_path / "second.db")
+
+    first, first_created = first_store.register_document(
+        filename="first.txt",
+        content_hash="first-hash",
+        media_type="text/plain",
+    )
+    second, second_created = second_store.register_document(
+        filename="second.txt",
+        content_hash="second-hash",
+        media_type="text/plain",
+    )
+
+    assert first_created is True
+    assert second_created is True
+    assert first_store.get_document(first.doc_id) is not None
+    assert second_store.get_document(second.doc_id) is not None
