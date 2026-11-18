@@ -1,232 +1,223 @@
-# SAMVAD
+# SAMVAD | संवाद
 
-> **Speak. Retrieve. Ground.**
+> **Intelligence Through Evidence — Voice-First, Evidence-Grounded Multilingual RAG Platform**
 
-Adaptive Voice-Enabled RAG system.
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-App%20Router-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector%20%2B%20RLS-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
----
-
-## Overview
-
-SAMVAD is a voice-first retrieval-augmented generation system designed for multilingual, Indic-language-aware information retrieval. Users speak a question, and the system:
-
-```
-Voice Input → Speech-to-Text → Query Processing → Adaptive Retrieval
-→ Reranking → Guardrails → Grounded Answer
-```
-
-The system is built to support:
-
-- **Voice-first interaction** via Sarvam AI / ElevenLabs STT
-- **Multilingual / Indic orientation** using MSMARCO-XI by AI4Bharat
-- **Multi-strategy chunking** (whole-passage, semantic, sliding window)
-- **Adaptive retrieval** (dense, lexical/BM25, hybrid with query routing)
-- **Two-stage retrieval** with cross-encoder reranking
-- **Structured orchestration** with retries, fallback, and abstention
-- **Guardrails** for input validation, relevance, confidence, and grounding
-- **Real latency benchmarking** with P50/P70/P100 metrics
+**SAMVAD (संवाद)** is a full-stack, voice-first Retrieval-Augmented Generation (RAG) platform engineered for multilingual and Indic-language research workflows. It combines hybrid Reciprocal Rank Fusion (BM25 + dense vector search), two-stage reranking, fail-closed hallucination guardrails, multi-tenant cloud persistence, and real-time pipeline observability into a unified research workspace.
 
 ---
 
-## Current Implementation Status
+## Key Capabilities
 
-### Foundation ✓
+- **Hybrid Retrieval & Two-Stage Ranking**  
+  Combines Okapi BM25 lexical search with dense vector cosine retrieval (`pgvector` / local TF-IDF SVD 128d / OpenAI-compatible embeddings) via **Reciprocal Rank Fusion (RRF)**, adaptive query routing, retrieval caching, and cross-stage reranking.
+- **Voice-First Multilingual & Indic Interaction**  
+  Supports native Indic speech-to-text and text-to-speech powered by **Sarvam AI** (`saaras:v3` STT & `bulbul` TTS), with pluggable ElevenLabs and Gemini STT adapters, speech transcript normalization, and Unicode NFC normalization.
+- **Fail-Closed Grounding & Citation Guardrails**  
+  Enforces strict inline source citations (`[1]`, `[2]`), input validation, relevance overlap checks, and confidence thresholds. Automatically triggers **honest abstention** when retrieved evidence is insufficient—eliminating unsupported hallucinations.
+- **Multi-Tenant Document Isolation & Ingestion**  
+  Ingests `PDF`, `DOCX`, `Markdown`, `TXT`, `HTML`, and `JSON` documents with SHA-256 deduplication and configurable chunking strategies (`sliding_window`, `semantic`, `whole_passage`). Backed by **Supabase PostgreSQL (`pgvector`)** with **Row-Level Security (RLS)** and per-user isolation, plus a local SQLite fallback for offline development.
+- **Interactive Research Workspace & Live Observability**  
+  Next.js workspace featuring persistent Knowledge Base state, clickable inline citations, an interactive **Evidence & Pipeline Inspector**, Server-Sent Events (SSE) stage streaming, session management, and real-time **P50 / P70 / P100** latency telemetry.
+- **Automated Evaluation & Security Test Suite**  
+  Includes a built-in evaluation harness (`backend/app/evaluation/`) and **32 pytest suites** covering end-to-end orchestration, hybrid RRF, reranking, guardrails, multi-tenant document APIs, and security red-teaming.
 
-- [x] Frontend foundation (Next.js + TypeScript + Tailwind CSS)
-- [x] Backend foundation (FastAPI + Pydantic)
-- [x] API contracts and stable schemas
-- [x] Pipeline state machine with valid transitions
-- [x] Service interfaces and protocols
-- [x] Configuration system (pydantic-settings + env vars)
-- [x] Centralized error handling with custom exceptions
-- [x] Structured logging with request_id tracing
-- [x] Analytics framework with percentile calculations
-- [x] Voice recording infrastructure (browser microphone)
-- [x] Pipeline visualization component
-- [x] Answer display component (all states)
-- [x] Analytics page with empty state
-- [x] Architecture page
-- [x] Test suite (health, config, schemas, pipeline, percentiles, errors)
+---
 
-### Core AI Pipeline — Pending
+## System Architecture
 
-- [ ] MSMARCO-XI dataset ingestion
-- [ ] Multi-strategy chunking implementation
-- [ ] Embedding generation
-- [ ] Vector index (FAISS / Qdrant)
-- [ ] Dense retrieval
-- [ ] Lexical retrieval (BM25)
-- [ ] Hybrid retrieval and fusion
-- [ ] Adaptive query routing
-- [ ] Cross-encoder reranking
-- [ ] LLM-based generation
-- [ ] Guardrail implementation
-- [ ] Real latency benchmarks
+```mermaid
+flowchart LR
+    A["Voice / Text Input"] --> B["Sarvam AI STT & Normalizer"]
+    B --> C["Query Analyzer & Adaptive Router"]
+    C --> D1["Okapi BM25 Lexical Index"]
+    C --> D2["Dense Vector Index (pgvector / SVD)"]
+    D1 --> E["Reciprocal Rank Fusion (RRF)"]
+    D2 --> E
+    E --> F["Two-Stage Reranker & Context Builder"]
+    F --> G["Fail-Closed Guardrails\n(Relevance & Confidence)"]
+    G --> H["Grounded LLM Generator\n(Gemini / OpenAI / Ollama)"]
+    H --> I["Cited Answer + Evidence Inspector\n+ Sarvam AI TTS + P50/P70/P100 Metrics"]
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | Next.js (App Router), React, TypeScript, Tailwind CSS |
+| **Backend API** | FastAPI, Pydantic v2, Uvicorn, SSE Streaming, Custom Middleware |
+| **Retrieval & Ranking** | Okapi BM25, TF-IDF SVD (128d) / OpenAI-Compatible Embeddings, Reciprocal Rank Fusion (RRF), Reranker |
+| **LLM & Speech** | Google Gemini, OpenAI, Ollama (pluggable) · Sarvam AI (`saaras:v3` STT / `bulbul` TTS), ElevenLabs |
+| **Database & Security** | Supabase PostgreSQL (`pgvector`, Pooled Connections, Row-Level Security), SQLite fallback, Per-User Tenant Scoping |
+| **Observability & QA** | Structured Request-ID Logging, P50/P70/P100 Telemetry Store, Evaluation Harness, Pytest (32 test modules) |
 
 ---
 
 ## Project Structure
 
-```
+```text
 samvad-rag/
-├── frontend/                    # Next.js application
-│   ├── app/                     # App Router pages
-│   │   ├── page.tsx             # Main query interface
-│   │   ├── analytics/           # Latency analytics page
-│   │   └── architecture/        # Architecture overview page
-│   ├── components/
-│   │   ├── layout/              # Header, navigation
-│   │   ├── voice/               # Voice recording button
-│   │   ├── pipeline/            # Pipeline visualizer
-│   │   ├── answer/              # Answer/result display
-│   │   ├── analytics/           # Latency cards
-│   │   └── ui/                  # Text input, shared UI
-│   ├── hooks/                   # Custom React hooks
-│   ├── lib/                     # API client, demo data
-│   └── types/                   # TypeScript type definitions
-│
-├── backend/
+├── frontend/                              # Next.js Research Workspace
 │   ├── app/
-│   │   ├── main.py              # FastAPI application entry
-│   │   ├── api/                 # Route handlers
-│   │   ├── core/                # Config, logging, errors
-│   │   ├── schemas/             # Pydantic models
-│   │   ├── pipeline/            # Orchestrator, state, interfaces
-│   │   ├── speech/              # STT providers (Sarvam, ElevenLabs stubs)
-│   │   ├── retrieval/           # Dense, lexical, hybrid, router, reranker stubs
-│   │   ├── generation/          # LLM generator stub
-│   │   ├── guardrails/          # Input guard + fail-closed stubs
-│   │   └── analytics/           # Bounded metrics store, percentile calculations
-│   ├── ingestion/               # Dataset ingestion (planned)
-│   ├── benchmarks/              # Benchmark runner and results
-│   ├── tests/                   # Test suite
+│   │   ├── page.tsx                       # Main research workspace & chat canvas
+│   │   ├── documents/page.tsx             # Knowledge Base registry & multi-format uploader
+│   │   ├── architecture/page.tsx          # Interactive Pipeline Explorer
+│   │   ├── analytics/page.tsx             # P50/P70/P100 latency & stage analytics
+│   │   └── settings/page.tsx              # Workspace & pipeline preferences
+│   ├── components/
+│   │   ├── workspace/                     # QueryComposer, ResearchMessage, EvidenceInspector
+│   │   ├── layout/                        # AppShell, UserAccountMenu, ThemeProvider
+│   │   ├── auth/                          # Authentication modal & flows
+│   │   ├── voice/                         # Browser microphone recorder & playback
+│   │   └── analytics/                     # Latency percentile visualizations
+│   ├── context/                           # AuthContext, persistent KnowledgeBaseContext
+│   ├── hooks/                             # Voice recording & client hooks
+│   └── lib/api/client.ts                  # Typed API client with tenant & auth headers
+│
+├── backend/                               # FastAPI RAG Orchestration Engine
+│   ├── app/
+│   │   ├── main.py                        # App factory, CORS, rate limiting, API middleware
+│   │   ├── api/                           # Query, Voice, Documents, Auth, Analytics, Health routes
+│   │   ├── pipeline/                      # State machine, orchestrator, runtime index manager
+│   │   ├── ingestion/                     # Multi-format loaders, Unicode normalizer, chunker, store
+│   │   ├── retrieval/                     # BM25, dense, hybrid RRF, router, reranker, cache, compressor
+│   │   ├── embeddings/                    # Local TF-IDF SVD & OpenAI-compatible providers
+│   │   ├── generation/                    # Citation-enforced LLM generator (Gemini / OpenAI / Ollama)
+│   │   ├── speech/                        # Sarvam AI / ElevenLabs STT, TTS, transcript normalizer
+│   │   ├── guardrails/                    # Input, relevance, confidence & fail-closed guards
+│   │   ├── db/                            # Pooled PostgreSQL/SQLite manager, schema & RLS migrations
+│   │   ├── analytics/                     # Bounded telemetry store & percentile calculators
+│   │   └── evaluation/                    # Automated benchmark runner, loader, metrics & CLI
+│   ├── tests/                             # 32 pytest suites (E2E, retrieval, security, API, eval)
 │   ├── Dockerfile
 │   └── requirements.txt
 │
-├── docs/
-│   ├── MASTER_PROJECT_DIRECTIVE.md
-│   ├── ROADMAP.md
-│   ├── architecture.md          # Implemented & target architecture
-│   ├── DECISIONS.md             # Architectural Decision Records
-│   ├── KNOWN_LIMITATIONS.md     # Current gaps & host constraints
-│   └── EVALUATION_STRATEGY.md   # Metrics, datasets, reproducibility rules
+├── docs/                                  # Technical Specifications & ADRs
+│   ├── architecture.md                    # Detailed system architecture
+│   ├── DECISIONS.md                       # Architectural Decision Records
+│   ├── EVALUATION_STRATEGY.md             # Evaluation metrics & reproducibility guidelines
+│   ├── ROADMAP.md                         # Engineering roadmap
+│   └── KNOWN_LIMITATIONS.md               # Current constraints & trade-offs
 │
-├── .github/workflows/ci.yml
-├── .env.example                 # Environment variable template
-├── .gitignore
-├── docker-compose.yml
+├── .github/workflows/ci.yml               # Continuous Integration workflow
+├── docker-compose.yml                     # Containerized deployment setup
 └── README.md
 ```
 
 ---
 
-## Setup
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.11–3.13 recommended (3.12 used in CI; ML wheel compatibility on 3.14 is unverified)
-- Node.js 18+ (20 recommended)
-- npm
+- **Python** 3.11+ (3.12 recommended)
+- **Node.js** 18+ (20 LTS recommended) and `npm`
+- **PostgreSQL / Supabase** (optional — falls back cleanly to local SQLite if `DATABASE_URL` is omitted)
 
-### Backend
+### 1. Configure Environment Variables
+
+Create `backend/.env` (using `.env.example` as a template):
+
+| Variable | Description | Required |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | PostgreSQL / Supabase connection URI (`sslmode=require`) | Optional (SQLite fallback) |
+| `LLM_PROVIDER` | Active LLM backend: `gemini`, `openai`, or `ollama` | For generation |
+| `LLM_MODEL` | Model identifier (e.g., `gemini-2.5-flash`, `gpt-4o-mini`) | For generation |
+| `LLM_API_KEY` | Provider API key | For cloud LLMs |
+| `STT_PROVIDER` | Speech provider: `sarvam`, `elevenlabs`, or `gemini` | For voice features |
+| `SARVAM_API_KEY` | Sarvam AI API key for Indic STT (`saaras:v3`) & TTS (`bulbul`) | For Sarvam voice |
+| `EMBEDDING_PROVIDER` | `local_tfidf_svd` (offline default) or `openai_compatible` | No |
+| `CORS_ORIGINS` | Comma-separated allowed frontend origins | No (`http://localhost:3000`) |
+
+### 2. Run the Backend
 
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
-
-# Activate (Windows)
-venv\Scripts\activate
-# Activate (macOS/Linux)
-# source venv/bin/activate
+# Create and activate virtual environment
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS / Linux:
+# source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the server
-uvicorn app.main:app --reload --port 8000
+# Start FastAPI server
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-The API will be available at `http://localhost:8000`.
-Swagger docs: `http://localhost:8000/docs`
+- API Base URL: `http://127.0.0.1:8000`
+- Interactive Swagger Docs: `http://127.0.0.1:8000/docs`
 
-### Frontend
+### 3. Run the Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Run the dev server
 npm run dev
 ```
 
-The app will be available at `http://localhost:3000`.
+- Research Workspace UI: `http://localhost:3000`
 
-### Running Tests
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Service health & connectivity check |
+| `GET` | `/api/v1/pipeline/status` | Live index counts, active LLM/STT providers & retrieval readiness |
+| `POST` | `/api/v1/query` | Execute text query with hybrid/dense/BM25 retrieval, reranking & citations |
+| `POST` | `/api/v1/query/stream` | Real-time stage-by-stage SSE streaming query execution |
+| `POST` | `/api/v1/voice/query` | Upload audio for multilingual STT transcription + grounded RAG response |
+| `POST` | `/api/v1/voice/speak` | Synthesize Indic/multilingual spoken response via Sarvam AI TTS |
+| `POST` | `/api/v1/documents` | Ingest, normalize, deduplicate & index multi-format documents (tenant-scoped) |
+| `GET` | `/api/v1/documents` | List authenticated user's indexed documents and metadata |
+| `GET` | `/api/v1/documents/{doc_id}/chunks` | Inspect chunked passages for a specific document |
+| `DELETE` | `/api/v1/documents/{doc_id}` | Delete a document and its indexed chunks (enforces tenant ownership) |
+| `GET` | `/api/v1/analytics/summary` | Aggregate query volume, grounding rate, and stage performance |
+| `GET` | `/api/v1/analytics/latency` | P50 / P70 / P100 end-to-end and per-stage latency benchmarks |
+| `POST` | `/api/v1/auth/signup` · `/login` | User registration, session login, and profile management |
+
+---
+
+## Testing & Evaluation
+
+Run the full backend test suite (32 test modules covering retrieval, reranking, guardrails, streaming, security red-teaming, and E2E orchestration):
 
 ```bash
 cd backend
 pytest -v
 ```
 
----
+Run the automated retrieval & grounding evaluation CLI:
 
-## Environment Variables
-
-Copy `.env.example` to `.env` in the project root and fill in values:
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `ENVIRONMENT` | `development` / `staging` / `production` | No (default: development) |
-| `SARVAM_API_KEY` | Sarvam AI API key for Indic STT | For voice features |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key (alt STT) | Optional |
-| `LLM_API_KEY` | LLM provider API key | For generation |
-| `LLM_MODEL` | LLM model identifier | For generation |
-| `EMBEDDING_MODEL` | Embedding model identifier | For retrieval |
-| `VECTOR_DB_PATH` | Path to vector index | For retrieval |
-| `CORS_ORIGINS` | Allowed CORS origins | No (default: localhost:3000) |
-
-See `.env.example` for the complete list.
+```bash
+cd backend
+python -m app.evaluation.cli --help
+```
 
 ---
 
-## API Endpoints
+## Documentation
 
-| Method | Path | Description | Status |
-|--------|------|-------------|--------|
-| `GET` | `/health` | Service health check | ✅ Working |
-| `POST` | `/api/v1/query` | Text query | ⏳ Returns not_implemented |
-| `POST` | `/api/v1/voice/query` | Voice query (audio upload) | ⏳ Returns not_implemented |
-| `GET` | `/api/v1/analytics/summary` | Analytics summary | ✅ Working (empty) |
-| `GET` | `/api/v1/analytics/latency` | Latency statistics | ✅ Working (empty) |
-
----
-
-## Future Integration Points
-
-The next developer should implement the core RAG pipeline by:
-
-1. **Implementing service protocols** in `backend/app/pipeline/interfaces.py`
-2. **Wiring services** in `backend/app/pipeline/orchestrator.py → get_orchestrator()`
-3. **Adding ingestion scripts** in `backend/ingestion/`
-4. **Running benchmarks** and populating `backend/benchmarks/results/`
-
-Key files to start with:
-
-- `backend/app/pipeline/interfaces.py` — Service contracts
-- `backend/app/pipeline/orchestrator.py` — Pipeline wiring point
-- `backend/app/retrieval/` — Retrieval implementations
-- `backend/app/generation/generator.py` — LLM integration
-- `backend/app/speech/provider.py` — STT implementations
-- `backend/app/guardrails/interfaces.py` — Guardrail logic
-
-The frontend, API contracts, and schemas are designed to work without changes once the backend services are connected.
+- [System Architecture](docs/architecture.md)
+- [Architectural Decision Records (ADRs)](docs/DECISIONS.md)
+- [Evaluation Strategy](docs/EVALUATION_STRATEGY.md)
+- [Engineering Roadmap](docs/ROADMAP.md)
+- [Known Limitations](docs/KNOWN_LIMITATIONS.md)
 
 ---
 
 ## License
 
-Built for Hacker House Goa 2026.
+This project is released under the MIT License. See the repository for details.
