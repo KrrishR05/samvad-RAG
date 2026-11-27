@@ -97,8 +97,28 @@ class DatabaseManager:
                     "PostgreSQL was requested (via DATABASE_URL), but psycopg2 is not installed. "
                     "Install psycopg2-binary in your Python environment."
                 )
-            self._init_pg_pool()
-            logger.info("DatabaseManager initialized in PostgreSQL mode (Pooled).")
+            import time as _time
+
+            last_err: Optional[Exception] = None
+            for attempt in range(1, 4):
+                try:
+                    self._init_pg_pool()
+                    logger.info("DatabaseManager initialized in PostgreSQL mode (Pooled).")
+                    last_err = None
+                    break
+                except Exception as e:
+                    last_err = e
+                    logger.warning(
+                        "PostgreSQL connection attempt %d/3 failed (%s). Retrying...",
+                        attempt,
+                        e,
+                    )
+                    if attempt < 3:
+                        _time.sleep(1.0)
+            if last_err is not None:
+                raise RuntimeError(
+                    f"Failed to connect to PostgreSQL after 3 attempts: {last_err}"
+                ) from last_err
         else:
             self.sqlite_db_path.parent.mkdir(parents=True, exist_ok=True)
             logger.info(
@@ -121,6 +141,10 @@ class DatabaseManager:
         ) and "sslmode" not in dsn:
             sep = "&" if "?" in dsn else "?"
             dsn = f"{dsn}{sep}sslmode=require"
+
+        if "connect_timeout" not in dsn:
+            sep = "&" if "?" in dsn else "?"
+            dsn = f"{dsn}{sep}connect_timeout=5"
 
         try:
             self._pg_pool = psycopg2.pool.ThreadedConnectionPool(

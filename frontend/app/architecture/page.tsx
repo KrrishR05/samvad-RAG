@@ -430,7 +430,7 @@ export default function ArchitecturePage() {
               <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
                 <span className="text-[10px] text-[var(--text-muted)] uppercase block">Database Engine</span>
                 <span className="text-[var(--status-success)] font-semibold mt-0.5 block">
-                  SQLite (WAL Mode)
+                  {(health as { database_engine?: string } | null)?.database_engine || "PostgreSQL (pgvector + RLS)"}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)]">

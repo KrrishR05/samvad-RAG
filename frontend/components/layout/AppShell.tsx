@@ -66,10 +66,7 @@ export function AppShell({
   const { totalDocuments, pipelineStatus: kbPipelineStatus } =
     useKnowledgeBase();
 
-  const status =
-    externalStatus !== undefined
-      ? externalStatus
-      : kbPipelineStatus;
+  const status = externalStatus ?? kbPipelineStatus;
 
   // Single health check on mount
   useEffect(() => {

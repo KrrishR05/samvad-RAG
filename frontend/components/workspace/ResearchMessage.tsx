@@ -26,6 +26,31 @@ interface ResearchMessageProps {
 }
 
 
+function formatAnswerForClipboard(markdown: string): string {
+  return markdown
+    // Remove fenced code block delimiters while keeping code content
+    .replace(/```[a-zA-Z0-9_-]*\n?/g, "")
+    // Strip markdown heading prefixes (### Title -> Title)
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    // Convert markdown bullet markers (- item / * item) to clean bullets
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    // Convert markdown links [label](url) -> label
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+    // Strip bold/italic emphasis markers (**text**, __text__, *text*, _text_)
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/_([^_\n]+)_/g, "$1")
+    // Strip inline code backticks and strikethrough
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    // Strip blockquote prefixes
+    .replace(/^\s*>\s?/gm, "")
+    // Collapse excess blank lines
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function ResearchMessage({
   turn,
   isInspected,
@@ -68,7 +93,8 @@ export function ResearchMessage({
   const handleCopy = async () => {
     if (!resp?.answer) return;
     try {
-      await navigator.clipboard.writeText(resp.answer);
+      const cleanText = formatAnswerForClipboard(resp.answer);
+      await navigator.clipboard.writeText(cleanText);
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {

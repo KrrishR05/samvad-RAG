@@ -98,7 +98,14 @@ class SamvadRuntime:
         self.query_analyzer: Optional[QueryAnalyzer] = (
             query_analyzer
             if query_analyzer is not None
-            else (IndicQueryAnalyzer() if self.settings.enable_query_analysis else None)
+            else (
+                IndicQueryAnalyzer(
+                    vocab_provider=lambda: self.lexical_retriever._idf.keys(),
+                    idf_provider=lambda: self.lexical_retriever._idf,
+                )
+                if self.settings.enable_query_analysis
+                else None
+            )
         )
         self.reranker: Optional[Reranker] = (
             reranker

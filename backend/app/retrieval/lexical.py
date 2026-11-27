@@ -14,6 +14,7 @@ from typing import Optional, Sequence
 
 from app.ingestion.chunker import DocumentChunk
 from app.pipeline.interfaces import ScoredChunk
+from app.retrieval.spell_corrector import find_best_vocab_match
 
 
 def tokenize_unicode(text: str) -> list[str]:
@@ -111,6 +112,19 @@ class LexicalRetriever:
         if not q_tokens:
             return []
 
+        # Resolve any OOV typo tokens against indexed corpus vocabulary
+        resolved_terms: list[tuple[str, float]] = []
+        for term in q_tokens:
+            if term in self._idf:
+                resolved_terms.append((term, 1.0))
+            elif len(term) >= 4 and not term.isdigit():
+                matched, sim = find_best_vocab_match(term, self._idf, idf_weights=self._idf)
+                if matched in self._idf:
+                    resolved_terms.append((matched, 0.85 * sim))
+
+        if not resolved_terms:
+            return []
+
         avgdl = self._avgdl if self._avgdl > 0 else 1.0
         scored: list[tuple[float, int]] = []
 
@@ -121,13 +135,13 @@ class LexicalRetriever:
             tf_map = self._doc_freqs[idx]
             dl = self._doc_lens[idx]
             score = 0.0
-            for term in q_tokens:
+            for term, weight in resolved_terms:
                 tf = tf_map.get(term, 0)
                 if tf == 0:
                     continue
                 idf = self._idf.get(term, 0.0)
                 denom = tf + self.k1 * (1.0 - self.b + self.b * (dl / avgdl))
-                score += idf * ((tf * (self.k1 + 1.0)) / denom)
+                score += weight * idf * ((tf * (self.k1 + 1.0)) / denom)
 
             if score > 0.0:
                 scored.append((score, idx))

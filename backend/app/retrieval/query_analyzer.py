@@ -9,9 +9,13 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Any, Optional
+from typing import Any, Callable, Iterable, Optional
 
 from app.pipeline.interfaces import AnalyzedQuery
+from app.retrieval.spell_corrector import (
+    correct_query_against_vocab,
+    expand_contractions,
+)
 
 
 # Unicode script ranges for Indic and major scripts
@@ -171,22 +175,37 @@ def extract_keywords_for_retrieval(text: str, language: str = "en") -> str:
 
 class IndicQueryAnalyzer:
     """
-    Deterministic Indic & English Query Analyzer.
+    Deterministic Indic & English Query Analyzer with Corpus-Aware Typo Tolerance.
 
     Conforms to the QueryAnalyzer protocol in app.pipeline.interfaces.
     """
 
+    def __init__(
+        self,
+        vocab_provider: Optional[Callable[[], Iterable[str]]] = None,
+        idf_provider: Optional[Callable[[], dict[str, float]]] = None,
+    ) -> None:
+        self._vocab_provider = vocab_provider
+        self._idf_provider = idf_provider
+
     async def analyze(self, query: str) -> AnalyzedQuery:
         """
-        Analyze, detect language, classify intent, and produce a normalized
-        representation for retrieval.
+        Analyze, detect language, normalize contractions, apply corpus-aware
+        spell correction, classify intent, and produce retrieval-ready text.
         """
         cleaned = normalize_query_text(query)
         lang, confidence = detect_language(cleaned)
-        intent = extract_intent(cleaned)
-        intensity = detect_intensity(cleaned)
-        about_samvad = is_samvad_query(cleaned)
-        retrieval_text = extract_keywords_for_retrieval(cleaned, language=lang)
+
+        vocab = self._vocab_provider() if self._vocab_provider else ()
+        idf_weights = self._idf_provider() if self._idf_provider else None
+        corrected, corrections = correct_query_against_vocab(
+            cleaned, vocab, idf_weights=idf_weights
+        )
+
+        intent = extract_intent(corrected)
+        intensity = detect_intensity(corrected)
+        about_samvad = is_samvad_query(corrected)
+        retrieval_text = extract_keywords_for_retrieval(corrected, language=lang)
 
         metadata: dict[str, Any] = {
             "detected_language": lang,
@@ -195,6 +214,8 @@ class IndicQueryAnalyzer:
             "intensity": intensity,
             "about_samvad": about_samvad,
             "normalized_length": len(cleaned),
+            "corrected_query": corrected,
+            "spell_corrections": corrections,
         }
 
         return AnalyzedQuery(

@@ -32,6 +32,7 @@ interface ResearchSession {
 }
 
 const SESSIONS_KEY = "samvad_sessions_v1";
+const ACTIVE_SESSION_KEY = "samvad_active_session_id_v1";
 const PREFS_KEY = "samvad_workbench_prefs_v1";
 
 const STARTER_PROMPTS = [
@@ -74,47 +75,56 @@ export default function ResearchWorkspacePage() {
 
   // Load saved local sessions + preferences asynchronously after hydration
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      try {
-        const rawPrefs = window.localStorage.getItem(PREFS_KEY);
-        if (rawPrefs) {
-          const parsed = JSON.parse(rawPrefs);
-          if (
-            parsed?.defaultStrategy === "hybrid" ||
-            parsed?.defaultStrategy === "dense" ||
-            parsed?.defaultStrategy === "lexical"
-          ) {
-            setDefaultStrategy(parsed.defaultStrategy);
-          }
-          if (typeof parsed?.autoOpenInspector === "boolean") {
-            setAutoOpenInspector(parsed.autoOpenInspector);
-          }
+    try {
+      const rawPrefs = window.localStorage.getItem(PREFS_KEY);
+      if (rawPrefs) {
+        const parsed = JSON.parse(rawPrefs);
+        if (
+          parsed?.defaultStrategy === "hybrid" ||
+          parsed?.defaultStrategy === "dense" ||
+          parsed?.defaultStrategy === "lexical"
+        ) {
+          setDefaultStrategy(parsed.defaultStrategy);
         }
-      } catch {
-        // Ignore malformed local prefs
+        if (typeof parsed?.autoOpenInspector === "boolean") {
+          setAutoOpenInspector(parsed.autoOpenInspector);
+        }
       }
+    } catch {
+      // Ignore malformed local prefs
+    }
 
-      try {
-        const raw = window.localStorage.getItem(SESSIONS_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as ResearchSession[];
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setSessions(parsed);
-            setActiveSessionId(parsed[0].id);
-            setSessionsHydrated(true);
-            return;
-          }
+    try {
+      const raw = window.localStorage.getItem(SESSIONS_KEY);
+      const savedActiveId = window.localStorage.getItem(ACTIVE_SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ResearchSession[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSessions(parsed);
+          const matchedActive = savedActiveId ? parsed.find((s) => s.id === savedActiveId) : null;
+          setActiveSessionId(matchedActive ? matchedActive.id : parsed[0].id);
+          setSessionsHydrated(true);
+          return;
         }
-      } catch {
-        // Fall back to fresh session
       }
-      const fresh = createEmptySession();
-      setSessions([fresh]);
-      setActiveSessionId(fresh.id);
-      setSessionsHydrated(true);
-    }, 0);
-    return () => window.clearTimeout(id);
+    } catch {
+      // Fall back to fresh session
+    }
+    const fresh = createEmptySession();
+    setSessions([fresh]);
+    setActiveSessionId(fresh.id);
+    setSessionsHydrated(true);
   }, []);
+
+  // Persist active session ID
+  useEffect(() => {
+    if (!sessionsHydrated || !activeSessionId) return;
+    try {
+      window.localStorage.setItem(ACTIVE_SESSION_KEY, activeSessionId);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [activeSessionId, sessionsHydrated]);
 
   // Persist local sessions
   useEffect(() => {
@@ -131,8 +141,11 @@ export default function ResearchWorkspacePage() {
   }, [sessions, sessionsHydrated]);
 
   const activeSession = useMemo(
-    () => sessions.find((s) => s.id === activeSessionId) ?? sessions[0] ?? null,
-    [sessions, activeSessionId]
+    () => {
+      if (!sessionsHydrated) return null;
+      return sessions.find((s) => s.id === activeSessionId) ?? sessions[0] ?? null;
+    },
+    [sessions, activeSessionId, sessionsHydrated]
   );
 
   const inspectedTurn = useMemo(() => {
@@ -385,16 +398,18 @@ export default function ResearchWorkspacePage() {
   );
 
   const sidebarSessions: SidebarSessionItem[] = useMemo(
-    () =>
-      sessions
+    () => {
+      if (!sessionsHydrated) return [];
+      return sessions
         .filter((s) => s.turns.length > 0 || s.id === activeSession?.id)
         .map((s) => ({
           id: s.id,
           title: s.title,
           updatedAt: s.updatedAt,
           messageCount: s.turns.length,
-        })),
-    [sessions, activeSession?.id]
+        }));
+    },
+    [sessions, activeSession?.id, sessionsHydrated]
   );
 
   return (
@@ -442,7 +457,12 @@ export default function ResearchWorkspacePage() {
           {/* Scrolling Conversation Content */}
           <div className="absolute inset-0 overflow-y-auto px-4 py-6 z-10">
             <div className="max-w-3xl mx-auto">
-            {!activeSession || activeSession.turns.length === 0 ? (
+            {!sessionsHydrated ? (
+              <div className="py-20 flex flex-col items-center justify-center gap-3">
+                <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-mono-tech text-[var(--text-muted)]">Loading session...</span>
+              </div>
+            ) : !activeSession || activeSession.turns.length === 0 ? (
               <div className="py-10 sm:py-16 space-y-8">
                 {/* Editorial Welcome Header */}
                 <div className="space-y-4">

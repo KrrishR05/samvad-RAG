@@ -424,6 +424,8 @@ class PipelineOrchestrator:
                 "language": analyzed.language,
                 "intensity": intensity,
                 "about_samvad": about_samvad,
+                "corrected_query": analyzed.metadata.get("corrected_query"),
+                "spell_corrections": analyzed.metadata.get("spell_corrections") or {},
             }
         )
 
@@ -449,6 +451,10 @@ class PipelineOrchestrator:
         else:
             retrieval_k = cfg.retrieval_top_k
 
+        # Expand candidate fetch when multi-tenant filtering is active so other users'
+        # chunks cannot crowd out the active user's top_k results.
+        fetch_k = max(retrieval_k * 4, 30) if user_id else retrieval_k
+
         # Check retrieval cache (Phase 6 — M6.2)
         cache_hit = False
         raw_chunks: Optional[list[ScoredChunk]] = None
@@ -457,7 +463,7 @@ class PipelineOrchestrator:
                 query=analyzed.processed_text,
                 language=analyzed.language,
                 strategy=chosen_key,
-                top_k=retrieval_k,
+                top_k=fetch_k,
             )
             if cached_res is not None:
                 raw_chunks = cached_res
@@ -468,7 +474,7 @@ class PipelineOrchestrator:
                 await asyncio.wait_for(
                     active_retriever.retrieve(
                         analyzed.processed_text,
-                        top_k=retrieval_k,
+                        top_k=fetch_k,
                         language=analyzed.language,
                     ),
                     timeout=stage_timeout,
@@ -479,7 +485,7 @@ class PipelineOrchestrator:
                     query=analyzed.processed_text,
                     language=analyzed.language,
                     strategy=chosen_key,
-                    top_k=retrieval_k,
+                    top_k=fetch_k,
                     results=raw_chunks,
                 )
 
@@ -497,7 +503,7 @@ class PipelineOrchestrator:
                     return True
                 return False
 
-            raw_chunks = [c for c in raw_chunks if _belongs_to_user(c)]
+            raw_chunks = [c for c in raw_chunks if _belongs_to_user(c)][:retrieval_k]
 
         if about_samvad:
             raw_chunks.insert(0, SAMVAD_CANONICAL_CHUNK)
@@ -548,9 +554,10 @@ class PipelineOrchestrator:
 
         # 5. Relevance & Confidence Check
         await _begin_stage(PipelineStage.CONFIDENCE_CHECK)
+        effective_query = analyzed.metadata.get("corrected_query") or analyzed.processed_text or cleaned_query
         if self.relevance_guard is not None and ranked_chunks and not about_samvad:
             rel_res = await asyncio.wait_for(
-                self.relevance_guard.check(query=cleaned_query, context=ranked_chunks),
+                self.relevance_guard.check(query=effective_query, context=ranked_chunks),
                 timeout=stage_timeout,
             )
             if not rel_res.passed:

@@ -286,8 +286,10 @@ class DocumentStore:
                 strategy = None
             extra_val = row["extra_json"]
             extra_dict = json.loads(extra_val) if isinstance(extra_val, str) else (extra_val or {})
-            if "user_id" not in extra_dict and row.get("user_id"):
-                extra_dict["user_id"] = row.get("user_id")
+            row_dict = dict(row) if hasattr(row, "keys") else (row if isinstance(row, dict) else {})
+            uid_val = row_dict.get("user_id")
+            if "user_id" not in extra_dict and uid_val:
+                extra_dict["user_id"] = uid_val
             meta = ChunkMetadata(
                 chunk_id=row["chunk_id"],
                 parent_document_id=row["parent_document_id"],
@@ -332,8 +334,10 @@ class DocumentStore:
                 strategy = None
             extra_val = row["extra_json"]
             extra_dict = json.loads(extra_val) if isinstance(extra_val, str) else (extra_val or {})
-            if "user_id" not in extra_dict and row.get("user_id"):
-                extra_dict["user_id"] = row.get("user_id")
+            row_dict = dict(row) if hasattr(row, "keys") else (row if isinstance(row, dict) else {})
+            uid_val = row_dict.get("user_id")
+            if "user_id" not in extra_dict and uid_val:
+                extra_dict["user_id"] = uid_val
             meta = ChunkMetadata(
                 chunk_id=row["chunk_id"],
                 parent_document_id=row["parent_document_id"],

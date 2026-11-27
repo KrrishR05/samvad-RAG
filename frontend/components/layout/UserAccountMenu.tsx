@@ -52,11 +52,11 @@ export function UserAccountMenu() {
           {user ? (
             <div className="px-3 py-2.5 border-b border-[var(--border-subtle)] mb-1">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#EA4335] via-[#FBBC05] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0">
+                <div suppressHydrationWarning className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#EA4335] via-[#FBBC05] to-[#8b5cf6] flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0">
                   {getInitials(user.name)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                  <div suppressHydrationWarning className="text-xs font-semibold text-[var(--text-primary)] truncate">
                     {user.name}
                   </div>
                   <div className="text-[11px] text-[var(--text-muted)] truncate">
@@ -150,12 +150,12 @@ export function UserAccountMenu() {
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
           {/* Avatar Circle with Initials (coral/gradient style from screenshot) */}
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#EA4335] to-[#FBBC05] flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0">
+          <div suppressHydrationWarning className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#EA4335] to-[#FBBC05] flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0">
             {user ? getInitials(user.name) : "G"}
           </div>
 
           <div className="min-w-0 flex-1 leading-tight text-left">
-            <div className="font-semibold text-xs text-[var(--text-primary)] group-hover:text-[var(--accent)] truncate">
+            <div suppressHydrationWarning className="font-semibold text-xs text-[var(--text-primary)] group-hover:text-[var(--accent)] truncate">
               {user ? user.name : "Sign In"}
             </div>
             <div className="text-[11px] text-[var(--text-muted)] font-normal">

@@ -14,16 +14,20 @@ import re
 from typing import Optional, Sequence
 
 from app.pipeline.interfaces import GuardrailResult, ScoredChunk
+from app.retrieval.spell_corrector import damerau_levenshtein
 
 _CITATION_RE = re.compile(r"\[(\d+)\]")
 
 # Common multilingual/English/Indic stopwords for substantive keyword filtering
 _STOPWORDS = {
     "the", "is", "at", "which", "on", "and", "a", "an", "in", "to", "for", "of", "or",
-    "what", "who", "where", "how", "this", "that", "it", "with", "as", "by", "from",
+    "what", "whats", "who", "whos", "where", "wheres", "how", "hows", "why", "whys",
+    "when", "whens", "this", "that", "it", "its", "with", "as", "by", "from",
     "be", "are", "was", "were", "been", "have", "has", "had", "do", "does", "did",
+    "dont", "doesnt", "didnt", "cant", "wont", "isnt", "arent", "im", "ive",
+    "tell", "explain", "describe", "define", "give", "show", "please", "about",
     "का", "के", "की", "है", "हैं", "में", "पर", "और", "से", "को", "या", "क्या",
-    "बताओ", "दीजिए", "गई", "गया", "था", "थी", "थे", "एक", "यह", "वह", "इस", "उस"
+    "बताओ", "बताएं", "दीजिए", "गई", "गया", "था", "थी", "थे", "एक", "यह", "वह", "इस", "उस"
 }
 
 
@@ -140,8 +144,23 @@ class RelevanceGuard:
         context_text = " ".join(c.text for c in context)
         c_tokens = _extract_content_words(context_text)
 
-        overlap = q_tokens.intersection(c_tokens)
-        overlap_ratio = len(overlap) / len(q_tokens)
+        matched_count = len(q_tokens.intersection(c_tokens))
+
+        # Fuzzy fallback for minor spelling typos (e.g., "chandryaan" matching "chandrayaan")
+        unmatched = q_tokens - c_tokens
+        for qt in unmatched:
+            if len(qt) < 4 or qt.isdigit():
+                continue
+            max_dist = 1 if len(qt) <= 6 else 2
+            for ct in c_tokens:
+                if len(ct) < 4 or abs(len(ct) - len(qt)) > max_dist:
+                    continue
+                dist = damerau_levenshtein(qt, ct)
+                if dist <= max_dist and (1.0 - dist / max(len(qt), len(ct))) >= 0.72:
+                    matched_count += 1
+                    break
+
+        overlap_ratio = matched_count / len(q_tokens)
 
         if overlap_ratio < self.min_overlap_ratio:
             return GuardrailResult(
@@ -196,11 +215,16 @@ class ConfidenceGuard:
 
         # Evaluate candidate chunk scores
         scores: list[float] = []
+        has_reranked = False
+        has_hybrid_rrf_only = False
         for c in context:
             if c.reranker_score is not None:
                 scores.append(c.reranker_score)
+                has_reranked = True
             elif c.retrieval_score is not None:
                 scores.append(c.retrieval_score)
+                if c.retrieval_method == "hybrid":
+                    has_hybrid_rrf_only = True
 
         if not scores:
             return GuardrailResult(
@@ -210,12 +234,19 @@ class ConfidenceGuard:
             )
 
         max_score = max(scores)
-        if max_score < self.min_confidence_score:
+        # Hybrid RRF scores are bounded by sum(weight / (60 + rank)) (~0.016 max),
+        # whereas reranker/dense/BM25 scores live on a higher scale.
+        effective_threshold = (
+            min(self.min_confidence_score, 0.01)
+            if (has_hybrid_rrf_only and not has_reranked)
+            else self.min_confidence_score
+        )
+        if max_score < effective_threshold:
             return GuardrailResult(
                 passed=False,
                 reason=(
                     f"Top retrieved candidate score ({max_score:.2f}) is below confidence "
-                    f"threshold ({self.min_confidence_score:.2f}). Insufficient evidence to answer reliably."
+                    f"threshold ({effective_threshold:.2f}). Insufficient evidence to answer reliably."
                 ),
                 action="abstain",
             )

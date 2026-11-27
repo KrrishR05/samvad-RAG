@@ -31,7 +31,7 @@ const LOGGED_OUT_KEY = "samvad_explicit_logout";
 export const DEFAULT_USER: User = {
   id: "usr_krrish_default",
   email: "krrish@samvad.ai",
-  name: "Krrish",
+  name: "Krrish Raj",
   provider: "email",
   plan: "free",
   created_at: new Date().toISOString(),
@@ -57,20 +57,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        if (localStorage.getItem(LOGGED_OUT_KEY) === "true") {
-          return null;
-        }
-        const storedUser = localStorage.getItem(USER_KEY);
-        if (storedUser) {
-          return JSON.parse(storedUser);
-        }
-      } catch {}
-    }
-    return DEFAULT_USER;
-  });
+  const [user, setUser] = useState<User | null>(DEFAULT_USER);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);

@@ -159,3 +159,4 @@ class HealthResponse(BaseModel):
     service: str = Field(default="samvad-api")
     version: str = Field(default="0.1.0")
     environment: str = Field(default="development")
+    database_engine: Optional[str] = Field(default=None)
