@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import re
 import time
 from typing import Any, AsyncGenerator, Callable, Optional, Sequence
 
@@ -78,6 +79,71 @@ def _score_to_level(score: Optional[float]) -> Optional[ConfidenceLevel]:
     if score >= 0.45:
         return ConfidenceLevel.MEDIUM
     return ConfidenceLevel.LOW
+
+
+_FOLLOWUP_RE = re.compile(
+    r"\b(explain\s+(more|in\s+detail)|more\s+in\s+detail|more\s+detail|in\s+detail|elaborate|tell\s+me\s+more|"
+    r"expand\s+on|go\s+deeper|summarize\s+(it|this|that|our\s+chat|conversation)|how\s+exactly|what\s+did\s+(you|we)|"
+    r"why|how\s+does\s+(it|this|that)|what\s+about\s+(it|this|that|them)|give\s+(me\s+)?examples?|"
+    r"earlier|previously|before|discussed|talked\s+about|mentioned|it|this|that|they|them|those|above|previous)\b",
+    re.IGNORECASE,
+)
+
+
+def _extract_topic_words(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-zA-Z0-9\u0900-\u0D7F]{4,}", text.lower())}
+
+
+def _contextualize_query(query: str, history: Optional[Sequence[Any]]) -> tuple[str, bool, Optional[str]]:
+    """
+    If *query* is a conversational follow-up or references something discussed earlier
+    in the same session, enrich the retrieval query with the matching prior turn's topic.
+    Returns (effective_query, was_contextualized, matched_history_summary).
+    """
+    if not history:
+        return query, False, None
+
+    turns = list(history)
+    words = query.strip().split()
+    q_topic_words = _extract_topic_words(query) - {
+        "explain", "more", "detail", "details", "elaborate", "exactly",
+        "does", "what", "about", "earlier", "previously", "before",
+        "discussed", "mentioned", "talked", "tell", "give", "example",
+        "examples", "this", "that", "they", "them", "those", "above", "previous",
+    }
+    is_followup = len(words) <= 7 or bool(_FOLLOWUP_RE.search(query))
+    if not is_followup:
+        return query, False, None
+
+    # First check if the follow-up references keywords from an earlier turn in the same session
+    best_turn = None
+    best_overlap = 0
+    if q_topic_words:
+        for turn in reversed(turns):
+            prev_q = getattr(turn, "query", None) or (turn.get("query") if isinstance(turn, dict) else "") or ""
+            prev_a = getattr(turn, "answer", None) or (turn.get("answer") if isinstance(turn, dict) else "") or ""
+            turn_words = _extract_topic_words(f"{prev_q} {prev_a}")
+            overlap = len(q_topic_words & turn_words)
+            if overlap > best_overlap:
+                best_overlap = overlap
+                best_turn = turn
+
+    # Fall back to the most recent substantive turn in the session
+    if best_turn is None:
+        for turn in reversed(turns):
+            prev_q = getattr(turn, "query", None) or (turn.get("query") if isinstance(turn, dict) else "") or ""
+            if prev_q.strip():
+                best_turn = turn
+                break
+
+    if best_turn is not None:
+        prev_q = (getattr(best_turn, "query", None) or (best_turn.get("query") if isinstance(best_turn, dict) else "") or "").strip()
+        prev_a = (getattr(best_turn, "answer", None) or (best_turn.get("answer") if isinstance(best_turn, dict) else "") or "").strip()
+        if prev_q:
+            summary = f"Previous question: {prev_q}\nPrevious answer: {prev_a[:1200]}"
+            return f"{prev_q} {query.strip()}", True, summary
+
+    return query, False, None
 
 
 class PipelineOrchestrator:
@@ -241,6 +307,7 @@ class PipelineOrchestrator:
         retriever_strategy: Optional[str] = None,
         top_k: Optional[int] = None,
         user_id: Optional[str] = None,
+        history: Optional[Sequence[Any]] = None,
     ) -> QueryResponse:
         """Execute the text RAG pipeline with bounded timeouts and real metrics."""
         rid = sanitize_request_id(request_id)
@@ -259,6 +326,7 @@ class PipelineOrchestrator:
                     top_k=top_k,
                     cfg=cfg,
                     user_id=user_id,
+                    history=history,
                 ),
                 timeout=cfg.pipeline_timeout_seconds,
             )
@@ -327,6 +395,7 @@ class PipelineOrchestrator:
         cfg: Settings,
         on_event: Optional[Callable[[dict[str, Any]], Any]] = None,
         user_id: Optional[str] = None,
+        history: Optional[Sequence[Any]] = None,
     ) -> QueryResponse:
         t0 = time.perf_counter()
         ps = PipelineState(request_id=rid)
@@ -402,11 +471,12 @@ class PipelineOrchestrator:
                 )
         await _complete_stage(output={"query_length": len(cleaned_query)})
 
-        # 2. Query Analysis
+        # 2. Query Analysis (with conversational follow-up contextualization)
         await _begin_stage(PipelineStage.QUERY_ANALYSIS)
+        contextualized_query, was_contextualized, matched_history_summary = _contextualize_query(cleaned_query, history)
         if self.query_analyzer is not None:
             analyzed = await asyncio.wait_for(
-                self.query_analyzer.analyze(cleaned_query),
+                self.query_analyzer.analyze(contextualized_query),
                 timeout=stage_timeout,
             )
             if language and not analyzed.language:
@@ -414,7 +484,7 @@ class PipelineOrchestrator:
         else:
             analyzed = AnalyzedQuery(
                 original_text=cleaned_query,
-                processed_text=cleaned_query,
+                processed_text=contextualized_query,
                 language=language,
             )
         intensity = analyzed.metadata.get("intensity", "standard")
@@ -424,6 +494,7 @@ class PipelineOrchestrator:
                 "language": analyzed.language,
                 "intensity": intensity,
                 "about_samvad": about_samvad,
+                "contextualized": was_contextualized,
                 "corrected_query": analyzed.metadata.get("corrected_query"),
                 "spell_corrections": analyzed.metadata.get("spell_corrections") or {},
             }
@@ -507,6 +578,24 @@ class PipelineOrchestrator:
 
         if about_samvad:
             raw_chunks.insert(0, SAMVAD_CANONICAL_CHUNK)
+        elif was_contextualized and matched_history_summary and not raw_chunks:
+            raw_chunks.append(
+                ScoredChunk(
+                    chunk_id="session-memory",
+                    text=matched_history_summary,
+                    retrieval_score=0.9,
+                    retrieval_method="session_memory",
+                    metadata=ChunkMetadata(
+                        chunk_id="session-memory",
+                        parent_document_id="session-conversation-history",
+                        language=analyzed.language or "en",
+                        chunk_index=0,
+                        total_chunks=1,
+                        char_count=len(matched_history_summary),
+                        token_count=len(matched_history_summary.split()),
+                    ),
+                )
+            )
 
         ret_stage = await _complete_stage(
             output={
@@ -653,6 +742,8 @@ class PipelineOrchestrator:
             sig = inspect.signature(self.generator.generate)
             if "intensity" in sig.parameters:
                 gen_kwargs["intensity"] = intensity
+            if "history" in sig.parameters and history:
+                gen_kwargs["history"] = history
         except Exception:
             pass
 

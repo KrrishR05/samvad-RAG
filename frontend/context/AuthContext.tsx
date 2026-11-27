@@ -31,7 +31,7 @@ const LOGGED_OUT_KEY = "samvad_explicit_logout";
 export const DEFAULT_USER: User = {
   id: "usr_krrish_default",
   email: "krrish@samvad.ai",
-  name: "Krrish Raj",
+  name: "Krrish",
   provider: "email",
   plan: "free",
   created_at: new Date().toISOString(),

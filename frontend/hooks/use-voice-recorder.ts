@@ -33,6 +33,7 @@ interface UseVoiceRecorderReturn {
   isListening: boolean;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
+  cancelRecording: () => void;
   reset: () => void;
 }
 
@@ -55,6 +56,7 @@ export function useVoiceRecorder(
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const cancelledRef = useRef<boolean>(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
@@ -74,6 +76,7 @@ export function useVoiceRecorder(
       const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
+      cancelledRef.current = false;
 
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
@@ -82,12 +85,18 @@ export function useVoiceRecorder(
       };
 
       recorder.onstop = () => {
+        // Release microphone tracks
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (cancelledRef.current) {
+          cancelledRef.current = false;
+          chunksRef.current = [];
+          return;
+        }
+
         const blob = new Blob(chunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         setState("stopped");
-
-        // Release microphone tracks
-        stream.getTracks().forEach((track) => track.stop());
       };
 
       recorder.onerror = () => {
@@ -177,6 +186,30 @@ export function useVoiceRecorder(
     }
   }, []);
 
+  const cancelRecording = useCallback(() => {
+    cancelledRef.current = true;
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop();
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort?.();
+        recognitionRef.current.stop();
+      } catch {
+        // Ignore
+      }
+      recognitionRef.current = null;
+    }
+    chunksRef.current = [];
+    setAudioBlob(null);
+    setLiveTranscript("");
+    setError(null);
+    setState("idle");
+  }, []);
+
   const reset = useCallback(() => {
     setAudioBlob(null);
     setLiveTranscript("");
@@ -193,8 +226,9 @@ export function useVoiceRecorder(
       isListening: state === "recording",
       startRecording,
       stopRecording,
+      cancelRecording,
       reset,
     }),
-    [state, audioBlob, error, liveTranscript, startRecording, stopRecording, reset]
+    [state, audioBlob, error, liveTranscript, startRecording, stopRecording, cancelRecording, reset]
   );
 }

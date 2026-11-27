@@ -44,6 +44,7 @@ def build_evidence_messages(
     context: Sequence[ScoredChunk],
     language: Optional[str] = None,
     intensity: str = "standard",
+    history: Optional[Sequence[Any]] = None,
 ) -> tuple[str, str]:
     """Build system prompt and delimited user prompt for evidence-grounded QA."""
     evidence_blocks: list[str] = []
@@ -60,6 +61,29 @@ def build_evidence_messages(
             f"</evidence>"
         )
 
+    history_block = ""
+    if history:
+        turns_list = list(history)
+        total_turns = len(turns_list)
+        turns_text: list[str] = []
+        for idx, turn in enumerate(turns_list, start=1):
+            t_query = getattr(turn, "query", None) or (turn.get("query") if isinstance(turn, dict) else "")
+            t_ans = getattr(turn, "answer", None) or (turn.get("answer") if isinstance(turn, dict) else "")
+            if t_query:
+                # Keep recent 4 turns detailed (up to 700 chars) and older turns compact (up to 250 chars)
+                max_len = 700 if idx > total_turns - 4 else 250
+                snippet = (t_ans or "")[:max_len].strip()
+                turns_text.append(f"Turn {idx} User: {t_query}\nTurn {idx} Assistant: {snippet}")
+        if turns_text:
+            history_block = (
+                "<conversation_history>\n"
+                "This is the full conversation history of the current session. Use it to recall anything discussed earlier "
+                "(including long-ago turns) and resolve indirect references ('it', 'that', 'earlier', 'explain in detail', 'how exactly it does'), "
+                "while grounding factual claims in <evidence> with inline citations [1], [2].\n"
+                + "\n---\n".join(turns_text)
+                + "\n</conversation_history>\n\n"
+            )
+
     lang_hint = (
         f"Respond in language '{language}'.\n"
         if language and language.strip()
@@ -75,6 +99,7 @@ def build_evidence_messages(
     user_prompt = (
         f"{lang_hint}"
         f"{depth_hint}"
+        f"{history_block}"
         f"Question:\n{query.strip()}\n\n"
         f"Retrieved Evidence:\n" + "\n\n".join(evidence_blocks)
     )
@@ -107,6 +132,7 @@ class BaseLLMGenerator(Protocol):
         context: Sequence[ScoredChunk],
         language: Optional[str] = None,
         intensity: str = "standard",
+        history: Optional[Sequence[Any]] = None,
     ) -> GenerationResult: ...
 
 
@@ -142,6 +168,7 @@ class OpenAICompatibleGenerator:
         context: Sequence[ScoredChunk],
         language: Optional[str] = None,
         intensity: str = "standard",
+        history: Optional[Sequence[Any]] = None,
     ) -> GenerationResult:
         if not self.model_name:
             raise ConfigurationError("LLM_MODEL must be set to use OpenAICompatibleGenerator.")
@@ -156,7 +183,7 @@ class OpenAICompatibleGenerator:
             )
 
         system_prompt, user_prompt = build_evidence_messages(
-            query, context, language=language, intensity=intensity
+            query, context, language=language, intensity=intensity, history=history
         )
         payload: dict[str, Any] = {
             "model": self.model_name,
@@ -225,6 +252,7 @@ class GeminiGenerator:
         context: Sequence[ScoredChunk],
         language: Optional[str] = None,
         intensity: str = "standard",
+        history: Optional[Sequence[Any]] = None,
     ) -> GenerationResult:
         if not context:
             return GenerationResult(
@@ -235,7 +263,7 @@ class GeminiGenerator:
             )
 
         system_prompt, user_prompt = build_evidence_messages(
-            query, context, language=language, intensity=intensity
+            query, context, language=language, intensity=intensity, history=history
         )
         payload: dict[str, Any] = {
             "systemInstruction": {"parts": [{"text": system_prompt}]},
@@ -247,17 +275,56 @@ class GeminiGenerator:
             "x-goog-api-key": self.api_key,
         }
 
+        candidate_models = [self.model_name]
+        for fallback in ("gemini-2.5-flash", "gemini-2.5-flash-lite"):
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
+
+        import asyncio as _asyncio
+
+        body: Optional[dict[str, Any]] = None
+        last_exc: Optional[Exception] = None
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-                resp = await client.post(
-                    f"{self.base_url}/models/{self.model_name}:generateContent",
-                    headers=headers,
-                    json=payload,
-                )
-                resp.raise_for_status()
-                body = resp.json()
+                for model_idx, model_id in enumerate(candidate_models):
+                    max_attempts = 2 if model_idx == 0 else 1
+                    for attempt in range(max_attempts):
+                        try:
+                            resp = await client.post(
+                                f"{self.base_url}/models/{model_id}:generateContent",
+                                headers=headers,
+                                json=payload,
+                            )
+                            if resp.status_code in (429, 500, 502, 503, 504):
+                                last_exc = httpx.HTTPStatusError(
+                                    f"Server error '{resp.status_code} {resp.reason_phrase}' for url '{resp.url}'",
+                                    request=resp.request,
+                                    response=resp,
+                                )
+                                if attempt + 1 < max_attempts:
+                                    await _asyncio.sleep(0.6 * (attempt + 1))
+                                    continue
+                                break
+                            resp.raise_for_status()
+                            body = resp.json()
+                            break
+                        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                            last_exc = exc
+                            if attempt + 1 < max_attempts:
+                                await _asyncio.sleep(0.6 * (attempt + 1))
+                                continue
+                            break
+                    if body is not None:
+                        break
+            if body is None:
+                if last_exc is not None:
+                    raise last_exc
+                raise GenerationError("Gemini API failed to return a response.")
         except httpx.HTTPError as exc:
             raise GenerationError(f"Gemini API request failed: {exc}") from exc
+        except GenerationError:
+            raise
         except Exception as exc:
             raise GenerationError(f"Gemini generation failed: {exc}") from exc
 

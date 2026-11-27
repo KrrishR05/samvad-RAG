@@ -53,12 +53,18 @@ export type DocumentStatus = "uploaded" | "processed" | "indexed" | "failed";
 
 // ─── Request Models ───
 
+export interface ConversationTurn {
+  query: string;
+  answer?: string;
+}
+
 export interface QueryRequest {
   query: string;
   request_id?: string;
   language?: string;
   retriever_strategy?: RetrieverStrategy;
   top_k?: number;
+  history?: ConversationTurn[];
 }
 
 export interface VoiceQueryRequest {

@@ -72,6 +72,27 @@ export default function ResearchWorkspacePage() {
   const [autoOpenInspector, setAutoOpenInspector] = useState(true);
 
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  const updateScrollButtonVisibility = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) {
+      setShowScrollToBottom(false);
+      return;
+    }
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollToBottom(distanceFromBottom > 120);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
 
   // Load saved local sessions + preferences asynchronously after hydration
   useEffect(() => {
@@ -149,6 +170,11 @@ export default function ResearchWorkspacePage() {
     },
     [sessions, activeSessionId, sessionsHydrated]
   );
+
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(updateScrollButtonVisibility);
+    return () => window.cancelAnimationFrame(raf);
+  }, [activeSessionId, activeSession?.turns.length, updateScrollButtonVisibility]);
 
   const inspectedTurn = useMemo(() => {
     if (!activeSession) return null;
@@ -304,11 +330,20 @@ export default function ResearchWorkspacePage() {
       }, 60);
 
       try {
+        const recentHistory = activeSession.turns
+          .filter((t) => t.response?.status === "completed" && t.response?.answer)
+          .slice(-40)
+          .map((t) => ({
+            query: t.query,
+            answer: t.response?.answer?.slice(0, 1200),
+          }));
+
         const res = await submitTextQuery({
           query,
           language,
           retriever_strategy: strategy,
           top_k: topK,
+          history: recentHistory,
         });
         updateTurnInSession(sessionId, turnId, {
           response: res,
@@ -457,7 +492,11 @@ export default function ResearchWorkspacePage() {
           <ChatCanvasGrid />
 
           {/* Scrolling Conversation Content */}
-          <div className="absolute inset-0 overflow-y-auto px-4 py-6 z-10">
+          <div
+            ref={scrollContainerRef}
+            onScroll={updateScrollButtonVisibility}
+            className="absolute inset-0 overflow-y-auto px-4 py-6 z-10"
+          >
             <div className="max-w-3xl mx-auto">
             {!sessionsHydrated ? (
               <div className="py-20 flex flex-col items-center justify-center gap-3">
@@ -550,6 +589,30 @@ export default function ResearchWorkspacePage() {
             )}
             </div>
           </div>
+
+          {/* Floating Scroll-to-Bottom Button (ChatGPT-style) */}
+          {showScrollToBottom && activeSession && activeSession.turns.length > 0 && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              aria-label="Scroll to bottom"
+              title="Scroll to bottom"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-9 h-9 rounded-full bg-[var(--bg-panel)]/95 backdrop-blur-md border border-[var(--border-strong)] text-[var(--text-primary)] shadow-lg hover:border-[var(--accent-border)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface)] transition-all flex items-center justify-center cursor-pointer active:scale-95"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <polyline points="19 12 12 19 5 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Query Composer */}

@@ -55,7 +55,7 @@ INTENT_PATTERNS = [
 ]
 
 INTENSITY_PATTERNS = [
-    r"\b(in detail|detailed|comprehensive|all details|all the details|elaborate|deep dive|thoroughly|explain everything|break down|step by step|full list|everything about|complete analysis)\b",
+    r"\b(in detail|more detail|explain more|expand on|go deeper|further|detailed|comprehensive|all details|all the details|elaborate|deep dive|thoroughly|explain everything|break down|step by step|full list|everything about|complete analysis)\b",
     r"(?:^|[\s\W])(विस्तार से|विस्तृत|पूरी जानकारी|सभी विवरण|व्याख्या|गहराई से|सब कुछ|समझाएं|विस्तारपूर्वक|पूरा)(?:$|[\s\W])",
 ]
 

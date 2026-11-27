@@ -62,12 +62,16 @@ CONTRACTIONS: dict[str, str] = {
     "its": "it is",
 }
 
-# Common conversational / platform typos that may not appear in user documents
+# Common conversational / platform terms that should never be miscorrected
 COMMON_DOMAIN_TERMS: set[str] = {
     "samvad", "samvaad", "hello", "namaste", "namaskar", "greetings",
     "what", "where", "when", "which", "explain", "describe", "summarize",
     "summary", "overview", "compare", "difference", "details", "detail",
     "about", "capabilities", "architecture", "retrieve", "retrieval",
+    "citation", "citations", "ground", "grounded", "grounding", "answer",
+    "answers", "document", "documents", "knowledge", "evidence", "research",
+    "analysis", "question", "questions", "exactly", "strict", "enforce",
+    "enforces", "context", "history", "earlier", "previous", "session",
 }
 
 
@@ -129,7 +133,7 @@ def find_best_vocab_match(
     token: str,
     vocab: Iterable[str],
     *,
-    min_similarity: float = 0.72,
+    min_similarity: float = 0.80,
     idf_weights: Optional[dict[str, float]] = None,
 ) -> tuple[str, float]:
     """

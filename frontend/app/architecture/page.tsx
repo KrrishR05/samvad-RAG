@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { getPipelineStatus, healthCheck } from "@/lib/api/client";
 import type { HealthResponse, PipelineStatusResponse } from "@/types/api";
 import { AppShell } from "@/components/layout/AppShell";
+import { useKnowledgeBase } from "@/context/KnowledgeBaseContext";
 import { RefreshIcon } from "@/components/ui/Icons";
 
 interface StageInfo {
@@ -174,7 +175,9 @@ const PIPELINE_STAGES: StageInfo[] = [
 ];
 
 export default function ArchitecturePage() {
-  const [status, setStatus] = useState<PipelineStatusResponse | null>(null);
+  const { pipelineStatus: kbStatus } = useKnowledgeBase();
+  const [fetchedStatus, setFetchedStatus] = useState<PipelineStatusResponse | null>(null);
+  const status = fetchedStatus ?? kbStatus;
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [selectedStage, setSelectedStage] = useState<StageInfo>(PIPELINE_STAGES[0]);
   const [probing, setProbing] = useState(false);
@@ -182,7 +185,7 @@ export default function ArchitecturePage() {
 
   const fetchStatus = () => {
     Promise.allSettled([getPipelineStatus(), healthCheck()]).then(([p, h]) => {
-      if (p.status === "fulfilled") setStatus(p.value);
+      if (p.status === "fulfilled") setFetchedStatus(p.value);
       if (h.status === "fulfilled") setHealth(h.value);
     });
   };

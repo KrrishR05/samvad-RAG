@@ -71,15 +71,17 @@ export function QueryComposer({
     error: recError,
     startRecording,
     stopRecording,
+    cancelRecording,
     reset: resetRecorder,
   } = useVoiceRecorder(voiceOptions);
 
   useEffect(() => {
     if (recState === "stopped" && audioBlob) {
       onSubmitVoice(audioBlob, language || undefined, strategy, topK);
+      onQueryChange("");
       resetRecorder();
     }
-  }, [recState, audioBlob, language, strategy, topK, onSubmitVoice, resetRecorder]);
+  }, [recState, audioBlob, language, strategy, topK, onSubmitVoice, onQueryChange, resetRecorder]);
 
   // Keep textarea in compact normal position: min 38px, capped at 72px with scrollbar
   useEffect(() => {
@@ -110,6 +112,11 @@ export function QueryComposer({
     }
   };
 
+  const handleCancelVoice = () => {
+    cancelRecording();
+    onQueryChange("");
+  };
+
   const isRecording = recState === "recording";
 
   return (
@@ -124,9 +131,13 @@ export function QueryComposer({
               <span className="w-2 h-2 rounded-full bg-[var(--status-error)] animate-pulse" />
               <span className="font-medium font-mono-tech">Listening to microphone... speak now</span>
             </span>
-            <span className="text-[11px] font-mono-tech text-[var(--text-secondary)]">
-              Click red stop button when finished
-            </span>
+            <button
+              type="button"
+              onClick={handleCancelVoice}
+              className="text-[11px] font-mono-tech text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 cursor-pointer"
+            >
+              Cancel
+            </button>
           </div>
         )}
 
@@ -199,36 +210,70 @@ export function QueryComposer({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Voice Toggle */}
+            {/* Cancel Voice Recording Button (shown while recording) */}
+            {isRecording && (
+              <button
+                type="button"
+                onClick={handleCancelVoice}
+                aria-label="Cancel voice recording"
+                title="Cancel recording without sending"
+                className="w-9 h-9 rounded-full border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--status-error)]/50 hover:bg-[var(--status-error-soft)] flex items-center justify-center transition-all cursor-pointer active:scale-95"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+
+            {/* Voice-First Mic Button */}
             <button
               type="button"
               onClick={isRecording ? stopRecording : startRecording}
               disabled={disabled || recState === "requesting"}
+              aria-label={isRecording ? "Stop and submit voice query" : "Record voice query"}
               title={
                 isRecording
                   ? "Stop and submit voice query"
-                  : "Record voice query (Phase 4 STT backend)"
+                  : "Speak your query (Sarvam AI Indic STT)"
               }
-              className={`relative p-1.5 rounded-lg border transition-colors cursor-pointer ${
+              className={`relative w-9 h-9 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                 isRecording
-                  ? "bg-[var(--status-error-soft)] border-[var(--status-error)]/40 text-[var(--status-error)]"
-                  : "bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-default)]"
+                  ? "bg-[var(--status-error)] border-[var(--status-error)] text-white shadow-[0_0_18px_rgba(239,68,68,0.45)]"
+                  : "bg-[var(--accent-soft)] border-[var(--accent-border)] text-[var(--accent)] hover:bg-[var(--accent)]/20 hover:shadow-[0_0_16px_rgba(167,139,250,0.28)]"
               }`}
             >
               {isRecording && (
-                <span className="absolute inset-0 rounded-lg border border-[var(--status-error)] animate-pulse-ring" />
+                <span className="absolute inset-0 rounded-full border-2 border-[var(--status-error)] animate-ping opacity-60" />
               )}
-              {isRecording ? <StopIcon className="w-3.5 h-3.5" /> : <MicIcon className="w-3.5 h-3.5" />}
+              {isRecording ? (
+                <StopIcon className="w-4 h-4 relative z-10" />
+              ) : (
+                <MicIcon className="w-4 h-4 relative z-10" />
+              )}
             </button>
 
-            {/* Submit Button */}
+            {/* Arrow-Only Submit Button (ChatGPT-style) */}
             <button
               type="submit"
               disabled={!query.trim() || disabled || isRecording}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-[var(--accent)] text-[#0C1412] hover:bg-[var(--accent-hover)] shadow-[0_0_15px_rgba(167,139,250,0.2)] disabled:opacity-35 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95"
+              aria-label="Send query"
+              title="Send query (Enter)"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+                !query.trim() || disabled || isRecording
+                  ? "bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)] opacity-55 cursor-not-allowed"
+                  : "bg-[var(--accent)] text-[#0C1412] hover:bg-[var(--accent-hover)] shadow-[0_0_16px_rgba(167,139,250,0.3)]"
+              }`}
             >
-              <span>Run</span>
-              <SendIcon className="w-3.5 h-3.5" />
+              <SendIcon className="w-4 h-4" />
             </button>
           </div>
         </div>

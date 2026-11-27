@@ -11,6 +11,13 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class ConversationTurn(BaseModel):
+    """A single prior user/assistant exchange for multi-turn conversational context."""
+
+    query: str = Field(..., min_length=1, max_length=2000)
+    answer: Optional[str] = Field(default=None, max_length=16000)
+
+
 class QueryRequest(BaseModel):
     """Text-based query request."""
 
@@ -37,6 +44,11 @@ class QueryRequest(BaseModel):
         ge=1,
         le=50,
         description="Optional number of chunks to retrieve (overrides server default).",
+    )
+    history: list[ConversationTurn] = Field(
+        default_factory=list,
+        max_length=50,
+        description="Prior conversation turns in the current session for resolving follow-up questions.",
     )
 
 

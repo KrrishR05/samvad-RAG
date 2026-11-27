@@ -50,6 +50,7 @@ async def submit_query(
             retriever_strategy=body.retriever_strategy,
             top_k=body.top_k,
             user_id=user_id,
+            history=body.history,
         )
     finally:
         current_request_id.reset(token)

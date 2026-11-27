@@ -22,20 +22,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>("dark");
 
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      try {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved === "light" || saved === "dark") {
-          setThemeState(saved);
-          document.documentElement.setAttribute("data-theme", saved);
-        } else {
-          document.documentElement.setAttribute("data-theme", "dark");
-        }
-      } catch {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved === "light" || saved === "dark") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setThemeState(saved);
+        document.documentElement.setAttribute("data-theme", saved);
+      } else {
         document.documentElement.setAttribute("data-theme", "dark");
       }
-    }, 0);
-    return () => window.clearTimeout(id);
+    } catch {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
   }, []);
 
   const setTheme = (mode: ThemeMode) => {
