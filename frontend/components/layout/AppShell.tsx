@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getPipelineStatus, healthCheck } from "@/lib/api/client";
@@ -29,6 +29,7 @@ export interface SidebarSessionItem {
   title: string;
   updatedAt: string;
   messageCount: number;
+  pinned?: boolean;
 }
 
 interface AppShellProps {
@@ -40,7 +41,56 @@ interface AppShellProps {
   onNewSession?: () => void;
   onSelectSession?: (id: string) => void;
   onDeleteSession?: (id: string) => void;
+  onTogglePinSession?: (id: string) => void;
+  onRenameSession?: (id: string, newTitle: string) => void;
+  onShareSession?: (id: string) => Promise<boolean> | boolean | void;
   pipelineStatus?: PipelineStatusResponse | null;
+}
+
+function PinIcon({ className = "w-3.5 h-3.5", filled = false }: { className?: string; filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </svg>
+  );
+}
+
+function MoreDotsIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <circle cx="5" cy="12" r="1.75" />
+      <circle cx="12" cy="12" r="1.75" />
+      <circle cx="19" cy="12" r="1.75" />
+    </svg>
+  );
+}
+
+function PencilIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function ShareIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
+    </svg>
+  );
 }
 
 export function AppShell({
@@ -52,6 +102,9 @@ export function AppShell({
   onNewSession,
   onSelectSession,
   onDeleteSession,
+  onTogglePinSession,
+  onRenameSession,
+  onShareSession,
   pipelineStatus: externalStatus,
 }: AppShellProps) {
   const pathname = usePathname();
@@ -62,6 +115,31 @@ export function AppShell({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(true);
+  const [pinnedCollapsed, setPinnedCollapsed] = useState(false);
+  const [menuSessionId, setMenuSessionId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [shareToast, setShareToast] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuSessionId) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuSessionId(null);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuSessionId(null);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [menuSessionId]);
 
   const { totalDocuments, pipelineStatus: kbPipelineStatus } =
     useKnowledgeBase();
@@ -189,60 +267,253 @@ export function AppShell({
         })}
       </nav>
 
-      {/* Local Session History */}
-      <div className="mt-5 flex-1 min-h-0 flex flex-col px-2.5">
-        {sessions && sessions.length > 0 && (
-          <>
-            <div className="px-2.5 pb-1.5 flex items-center justify-between">
-              <span className="text-[10px] font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
-                Recent Sessions
-              </span>
-              <span className="text-[10px] font-mono-tech text-[var(--text-muted)]">
-                local
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-0.5 pr-1">
-              {sessions.map((s) => {
-                const selected = s.id === activeSessionId;
-                return (
-                  <div
-                    key={s.id}
-                    className={`group flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-colors ${
-                      selected
-                        ? "bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)]"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border border-transparent"
-                    }`}
+      {/* Local Session History (Pinned + Recent Sessions) */}
+      <div className="mt-5 flex-1 min-h-0 flex flex-col px-2.5 overflow-hidden">
+        {sessions && sessions.length > 0 && (() => {
+          const pinnedSessions = sessions.filter((s) => s.pinned);
+          const recentSessions = sessions.filter((s) => !s.pinned);
+
+          const renderSessionRow = (s: SidebarSessionItem) => {
+            const selected = s.id === activeSessionId;
+            const menuOpen = menuSessionId === s.id;
+            const isRenaming = renamingId === s.id;
+
+            return (
+              <div
+                key={s.id}
+                className={`group relative flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                  selected || menuOpen
+                    ? "bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)]"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border border-transparent"
+                }`}
+              >
+                {isRenaming ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    onBlur={() => {
+                      const trimmed = renameDraft.trim();
+                      if (trimmed && trimmed !== s.title) {
+                        onRenameSession?.(s.id, trimmed);
+                      }
+                      setRenamingId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const trimmed = renameDraft.trim();
+                        if (trimmed && trimmed !== s.title) {
+                          onRenameSession?.(s.id, trimmed);
+                        }
+                        setRenamingId(null);
+                      } else if (e.key === "Escape") {
+                        setRenamingId(null);
+                      }
+                    }}
+                    className="flex-1 min-w-0 bg-[var(--bg-canvas)] text-[var(--text-primary)] px-1.5 py-0.5 rounded border border-[var(--accent-border)] text-xs focus:outline-none"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectSession?.(s.id);
+                      setMobileOpen(false);
+                    }}
+                    className="flex-1 text-left truncate cursor-pointer"
+                    title={s.title}
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectSession?.(s.id);
-                        setMobileOpen(false);
-                      }}
-                      className="flex-1 text-left truncate cursor-pointer"
-                      title={s.title}
-                    >
-                      {s.title}
-                    </button>
-                    {onDeleteSession && (
+                    {s.title}
+                  </button>
+                )}
+
+                {!isRenaming && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {onTogglePinSession && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDeleteSession(s.id);
+                          onTogglePinSession(s.id);
                         }}
-                        title="Delete session"
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-[var(--text-muted)] hover:text-[var(--status-error)] transition-opacity cursor-pointer"
+                        title={s.pinned ? "Unpin chat" : "Pin chat"}
+                        className={`p-1 rounded transition-opacity cursor-pointer ${
+                          s.pinned
+                            ? "opacity-90 text-[var(--accent)] hover:opacity-100"
+                            : menuOpen
+                            ? "opacity-100 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                            : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                        }`}
                       >
-                        <TrashIcon className="w-3 h-3" />
+                        <PinIcon className="w-3 h-3" filled={Boolean(s.pinned)} />
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (menuOpen) {
+                          setMenuSessionId(null);
+                          return;
+                        }
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const top = Math.min(rect.bottom + 4, window.innerHeight - 190);
+                        const left = Math.min(rect.left, window.innerWidth - 185);
+                        setMenuPos({ top, left });
+                        setMenuSessionId(s.id);
+                      }}
+                      title="Session options"
+                      className={`p-1 rounded transition-opacity cursor-pointer ${
+                        menuOpen
+                          ? "opacity-100 text-[var(--text-primary)] bg-[var(--bg-hover)]"
+                          : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      }`}
+                    >
+                      <MoreDotsIcon className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                );
-              })}
+                )}
+              </div>
+            );
+          };
+
+          const activeMenuSession = sessions.find((s) => s.id === menuSessionId) ?? null;
+
+          return (
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {pinnedSessions.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setPinnedCollapsed((p) => !p)}
+                    className="w-full px-2.5 pb-1.5 flex items-center gap-1 text-[10px] font-mono-tech uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-secondary)] cursor-pointer"
+                  >
+                    <span>Pinned</span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`w-3 h-3 transition-transform ${pinnedCollapsed ? "-rotate-90" : ""}`}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                  {!pinnedCollapsed && (
+                    <div className="space-y-0.5">{pinnedSessions.map(renderSessionRow)}</div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <div className="px-2.5 pb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-mono-tech uppercase tracking-wider text-[var(--text-muted)]">
+                    Recent Sessions
+                  </span>
+                  <span className="text-[10px] font-mono-tech text-[var(--text-muted)]">
+                    local
+                  </span>
+                </div>
+                <div className="space-y-0.5">
+                  {recentSessions.length > 0 ? (
+                    recentSessions.map(renderSessionRow)
+                  ) : (
+                    <p className="px-2.5 py-1 text-[11px] text-[var(--text-muted)]">
+                      All sessions pinned above
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Floating Session Action Menu (ChatGPT-style) */}
+              {activeMenuSession && (
+                <div
+                  ref={menuRef}
+                  style={{ top: menuPos.top, left: menuPos.left }}
+                  className="fixed z-50 w-44 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-2xl p-1.5 text-xs text-[var(--text-primary)]"
+                >
+                  {onTogglePinSession && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTogglePinSession(activeMenuSession.id);
+                        setMenuSessionId(null);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors cursor-pointer text-left"
+                    >
+                      <PinIcon className="w-3.5 h-3.5 text-[var(--text-secondary)]" filled={Boolean(activeMenuSession.pinned)} />
+                      <span>{activeMenuSession.pinned ? "Unpin" : "Pin"}</span>
+                    </button>
+                  )}
+
+                  {onRenameSession && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenamingId(activeMenuSession.id);
+                        setRenameDraft(activeMenuSession.title);
+                        setMenuSessionId(null);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors cursor-pointer text-left"
+                    >
+                      <PencilIcon className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                      <span>Rename</span>
+                    </button>
+                  )}
+
+                  {onShareSession && (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const sid = activeMenuSession.id;
+                        setMenuSessionId(null);
+                        const ok = await onShareSession(sid);
+                        setShareToast(
+                          ok !== false ? "Share link copied!" : "Failed to create share link"
+                        );
+                        setTimeout(() => setShareToast(null), 2400);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors cursor-pointer text-left"
+                    >
+                      <ShareIcon className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                      <span>Share</span>
+                    </button>
+                  )}
+
+                  {onDeleteSession && (
+                    <>
+                      <div className="my-1 border-t border-[var(--border-subtle)]" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(activeMenuSession.id);
+                          setMenuSessionId(null);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-[var(--status-error-soft)] text-[var(--status-error)] transition-colors cursor-pointer text-left"
+                      >
+                        <TrashIcon className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {shareToast && (
+                <div className="fixed bottom-4 left-4 z-50 px-3 py-1.5 rounded-lg bg-[var(--bg-panel)] border border-[var(--accent-border)] text-[11px] font-mono-tech text-[var(--accent)] shadow-lg">
+                  {shareToast}
+                </div>
+              )}
             </div>
-          </>
-        )}
+          );
+        })()}
       </div>
 
       {/* Live Capability Footer + User Account (ChatGPT Style) & Theme Toggle */}

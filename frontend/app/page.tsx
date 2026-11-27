@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  createShareLink,
   getPipelineStatus,
   submitTextQuery,
   submitVoiceQuery,
@@ -29,6 +30,7 @@ interface ResearchSession {
   createdAt: string;
   updatedAt: string;
   turns: ResearchTurn[];
+  pinned?: boolean;
 }
 
 const SESSIONS_KEY = "samvad_sessions_v1";
@@ -251,6 +253,36 @@ export default function ResearchWorkspacePage() {
     [sessions, activeSessionId]
   );
 
+  const handleTogglePinSession = useCallback((id: string) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, pinned: !s.pinned } : s))
+    );
+  }, []);
+
+  const handleRenameSession = useCallback((id: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    setSessions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, title: trimmed } : s))
+    );
+  }, []);
+
+  const handleShareSession = useCallback(
+    async (id: string) => {
+      const target = sessions.find((s) => s.id === id);
+      if (!target || target.turns.length === 0) return false;
+      try {
+        const res = await createShareLink(target.title, target.turns);
+        const shareUrl = `${window.location.origin}/share/${res.share_id}`;
+        await navigator.clipboard.writeText(shareUrl);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [sessions]
+  );
+
   const handleInspectTurn = useCallback(
     (turnId: string, tab: "evidence" | "pipeline" = "evidence", sourceIdx?: number) => {
       setInspectedTurnId(turnId);
@@ -444,6 +476,7 @@ export default function ResearchWorkspacePage() {
           title: s.title,
           updatedAt: s.updatedAt,
           messageCount: s.turns.length,
+          pinned: s.pinned,
         }));
     },
     [sessions, activeSession?.id, sessionsHydrated]
@@ -457,6 +490,9 @@ export default function ResearchWorkspacePage() {
       onNewSession={handleNewSession}
       onSelectSession={handleSelectSession}
       onDeleteSession={handleDeleteSession}
+      onTogglePinSession={handleTogglePinSession}
+      onRenameSession={handleRenameSession}
+      onShareSession={handleShareSession}
       pipelineStatus={pipelineStatus}
       headerActions={
         <div className="flex items-center gap-2">

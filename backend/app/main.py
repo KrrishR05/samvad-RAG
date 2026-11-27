@@ -20,6 +20,7 @@ from app.api.routes_auth import router as auth_router
 from app.api.routes_documents import router as documents_router
 from app.api.routes_health import router as health_router
 from app.api.routes_query import router as query_router
+from app.api.routes_share import router as share_router
 from app.api.routes_voice import router as voice_router
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
     app.include_router(voice_router)
     app.include_router(analytics_router)
     app.include_router(documents_router)
+    app.include_router(share_router)
 
     return app
 

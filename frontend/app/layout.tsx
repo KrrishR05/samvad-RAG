@@ -5,7 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { KnowledgeBaseProvider } from "@/context/KnowledgeBaseContext";
 
 export const metadata: Metadata = {
-  title: "SAMVAD — Evidence-Grounded Multilingual RAG Workbench",
+  title: "SAMVAD | संवाद",
   description:
     "Multilingual retrieval-augmented knowledge workspace with source provenance, hybrid RRF search, and pipeline telemetry.",
   icons: {

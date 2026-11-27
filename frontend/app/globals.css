@@ -228,3 +228,17 @@ html[data-theme="light"] .samvad-canvas-grid-lines {
     opacity: 0.85 !important;
   }
 }
+
+/* Atomic zero-flash theme switch + GPU View Transition cross-fade */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}

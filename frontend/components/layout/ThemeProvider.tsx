@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 
 export type ThemeMode = "dark" | "light";
 
@@ -37,12 +38,30 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setTheme = (mode: ThemeMode) => {
-    setThemeState(mode);
-    document.documentElement.setAttribute("data-theme", mode);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, mode);
-    } catch {
-      // Ignore storage failures in private contexts
+    const root = document.documentElement;
+    const apply = () => {
+      root.classList.add("theme-switching");
+      flushSync(() => {
+        setThemeState(mode);
+      });
+      root.setAttribute("data-theme", mode);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, mode);
+      } catch {
+        // Ignore storage failures in private contexts
+      }
+      // Force synchronous style recalc before removing transition lock
+      void root.offsetHeight;
+      root.classList.remove("theme-switching");
+    };
+
+    const doc = document as Document & {
+      startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+    };
+    if (typeof doc.startViewTransition === "function") {
+      doc.startViewTransition(apply);
+    } else {
+      apply();
     }
   };
 

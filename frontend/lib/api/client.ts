@@ -91,7 +91,40 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ─── Health & Status ───
+export interface SharedSessionResponse {
+  share_id: string;
+  title: string;
+  created_at: string;
+}
+
+export interface SharedSessionDetail {
+  share_id: string;
+  title: string;
+  turns: Array<{
+    id?: string;
+    query: string;
+    kind?: string;
+    createdAt?: string;
+    response?: QueryResponse;
+  }>;
+  created_at: string;
+}
+
+export async function createShareLink(
+  title: string,
+  turns: unknown[]
+): Promise<SharedSessionResponse> {
+  return request<SharedSessionResponse>("/api/v1/share", {
+    method: "POST",
+    body: JSON.stringify({ title, turns }),
+  });
+}
+
+export async function getSharedSession(
+  shareId: string
+): Promise<SharedSessionDetail> {
+  return request<SharedSessionDetail>(`/api/v1/share/${encodeURIComponent(shareId)}`);
+}
 
 export async function healthCheck(): Promise<HealthResponse> {
   return request<HealthResponse>("/health");

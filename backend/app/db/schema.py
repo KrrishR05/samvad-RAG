@@ -163,12 +163,21 @@ def init_database_tables(db: DatabaseManager, force: bool = False) -> None:
         );
 
         CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics_records(timestamp);
+
+        -- 4. Public Shareable Chat Sessions
+        CREATE TABLE IF NOT EXISTS shared_sessions (
+            share_id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            turns_json TEXT NOT NULL,
+            created_by TEXT,
+            created_at TEXT NOT NULL
+        );
         """
     )
 
     # Enable Row Level Security (RLS) on PostgreSQL for enterprise data isolation
     if db.is_postgres:
-        for table_name in ["documents", "chunks", "users", "sessions", "pro_waitlist", "analytics_records"]:
+        for table_name in ["documents", "chunks", "users", "sessions", "pro_waitlist", "analytics_records", "shared_sessions"]:
             try:
                 db.execute(f"ALTER TABLE public.{table_name} ENABLE ROW LEVEL SECURITY;")
             except Exception as exc:
