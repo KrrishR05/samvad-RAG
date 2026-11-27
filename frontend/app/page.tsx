@@ -84,6 +84,8 @@ export default function ResearchWorkspacePage() {
           parsed?.defaultStrategy === "dense" ||
           parsed?.defaultStrategy === "lexical"
         ) {
+          // Restore client-only preferences after hydration to avoid an SSR mismatch.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
           setDefaultStrategy(parsed.defaultStrategy);
         }
         if (typeof parsed?.autoOpenInspector === "boolean") {
